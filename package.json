@@ -1,0 +1,21 @@
+{
+  "name": "couchforge",
+  "version": "0.1.0",
+  "description": "Local hardware-accelerated desktop/game streamer (Sunshine-inspired foundation)",
+  "main": "host/index.js",
+  "scripts": {
+    "start": "node host/index.js",
+    "host": "node host/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0",
+    "which": "^4.0.0"
+  },
+  "optionalDependencies": {
+    "robotjs": "^0.6.0"
+  }
+}
