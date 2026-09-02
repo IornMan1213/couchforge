@@ -91,7 +91,25 @@ io.on('connection', (socket) => {
   console.log('client', socket.id);
 
   socket.on('create-session', (opts = {}) => {
-    const code = generateCode();
+    // Fixed room code from client — no random password-like code every time
+    let code = String(opts.code || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 12);
+    if (code.length < 4) code = generateCode();
+
+    if (sessions.has(code)) {
+      const oldSess = sessions.get(code);
+      stopSessionEncoder(oldSess);
+      try {
+        if (oldSess.hostSocket && oldSess.hostSocket.id !== socket.id) {
+          oldSess.hostSocket.emit('error', 'Room taken by a new host');
+        }
+      } catch (_) {}
+      sessions.delete(code);
+      console.log('[host] replaced existing room', code);
+    }
+
     const preset = opts.preset || 'balanced';
     const codecPref = opts.codec || 'auto';
     const session = {
@@ -157,7 +175,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-session', (code) => {
-    code = (code || '').toUpperCase().trim();
+    code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     const session = sessions.get(code);
     if (!session) {
       socket.emit('error', 'Session not found');
