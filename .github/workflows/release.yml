@@ -1,5 +1,6 @@
 name: Release
 
+# Runs automatically whenever you push a version tag like v0.3.0
 on:
   push:
     tags:
@@ -12,11 +13,15 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Package installer assets
         run: |
+          set -euo pipefail
           mkdir -p dist
+
+          # Individual files (easy one-click downloads)
           cp installers/windows/Install-CouchForge.cmd dist/
           cp installers/windows/Install-CouchForge.ps1 dist/
           cp installers/windows/Start-CouchForge.cmd dist/
@@ -24,20 +29,42 @@ jobs:
           cp installers/macos/install.sh dist/CouchForge-macos-install.sh
           cp installers/README.md dist/INSTALLERS.md
           cp CHANGELOG.md dist/
-          chmod +x dist/*.sh
+          chmod +x dist/CouchForge-linux-install.sh dist/CouchForge-macos-install.sh
+
+          # Per-OS zips (match what people expect on the Releases page)
+          mkdir -p /tmp/win /tmp/linux /tmp/mac
+          cp installers/windows/* /tmp/win/
+          cp installers/linux/install.sh /tmp/linux/
+          cp installers/macos/install.sh /tmp/mac/
+          (cd /tmp/win && zip -r "$GITHUB_WORKSPACE/dist/windows.zip" .)
+          (cd /tmp/linux && zip -r "$GITHUB_WORKSPACE/dist/linux.zip" .)
+          (cd /tmp/mac && zip -r "$GITHUB_WORKSPACE/dist/macos.zip" .)
+
           zip -r dist/CouchForge-source-installers.zip installers CHANGELOG.md README.md
 
-      - name: Create GitHub Release
+          echo "Assets ready:"
+          ls -la dist/
+
+      - name: Publish / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Creates the release if missing, or updates the existing tag release
+          tag_name: ${{ github.ref_name }}
+          name: CouchForge ${{ github.ref_name }}
+          draft: false
+          prerelease: false
           generate_release_notes: true
           body_path: CHANGELOG.md
+          fail_on_unmatched_files: true
           files: |
             dist/Install-CouchForge.cmd
             dist/Install-CouchForge.ps1
             dist/Start-CouchForge.cmd
             dist/CouchForge-linux-install.sh
             dist/CouchForge-macos-install.sh
+            dist/windows.zip
+            dist/linux.zip
+            dist/macos.zip
             dist/INSTALLERS.md
             dist/CHANGELOG.md
             dist/CouchForge-source-installers.zip
