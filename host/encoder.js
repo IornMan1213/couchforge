@@ -1,6 +1,8 @@
 /**
  * Hardware encode manager — FFmpeg capture + GPU encode.
- * Supports AV1 (nvenc/amf/qsv), H.264, HEVC; falls back to software.
+ * Supports AV1 / HEVC / H.264 (NVENC, AMF, QSV) with software fallback.
+ *
+ * ddagrab outputs d3d11 frames — must hwdownload (or scale_d3d11) before CPU scale/encode.
  */
 const { spawn } = require('child_process');
 const which = require('which');
@@ -13,12 +15,12 @@ const PRESETS = {
   quality:  { fps: 60, scale: '1920:1080', bitrate: '20M', bitrateAv1: '12M',  gop: 60 }
 };
 
+/** Auto order for browser MPEG-TS: H.264 first (MSE-friendly). */
 const CODEC_PREFERENCE = [
-  'av1_nvenc', 'av1_amf', 'av1_qsv',
-  'hevc_nvenc', 'hevc_amf', 'hevc_qsv',
   'h264_nvenc', 'h264_amf', 'h264_qsv',
-  'libsvtav1', 'libaom-av1',
-  'libx264'
+  'hevc_nvenc', 'hevc_amf', 'hevc_qsv',
+  'av1_nvenc', 'av1_amf', 'av1_qsv',
+  'libx264', 'libsvtav1', 'libaom-av1'
 ];
 
 const CODEC_LABELS = {
@@ -129,13 +131,8 @@ function pickEncoder(available, preference) {
   return { codec: 'libx264', name: CODEC_LABELS.libx264 };
 }
 
-function isAv1(codec) {
-  return /av1/i.test(codec);
-}
-
-function isHevc(codec) {
-  return /hevc|h265/i.test(codec);
-}
+function isAv1(codec) { return /av1/i.test(codec); }
+function isHevc(codec) { return /hevc|h265/i.test(codec); }
 
 function bitrateFor(encoder, preset) {
   if (isAv1(encoder.codec)) return preset.bitrateAv1 || preset.bitrate;
@@ -147,47 +144,56 @@ function buildEncodeFlags(encoder, preset) {
   const gop = String(preset.gop);
   const codec = encoder.codec;
   const args = [];
-
-  if (codec === 'av1_nvenc') {
+  if (codec === 'av1_nvenc' || codec === 'hevc_nvenc' || codec === 'h264_nvenc') {
     args.push('-preset', 'p1', '-tune', 'll', '-rc', 'cbr', '-b:v', br, '-maxrate', br, '-bufsize', br, '-g', gop, '-bf', '0', '-delay', '0', '-zerolatency', '1');
-  } else if (codec === 'av1_amf') {
+  } else if (codec === 'av1_amf' || codec === 'hevc_amf' || codec === 'h264_amf') {
     args.push('-quality', 'speed', '-rc', 'cbr', '-b:v', br, '-g', gop, '-usage', 'ultralowlatency');
-  } else if (codec === 'av1_qsv') {
+  } else if (codec === 'av1_qsv' || codec === 'hevc_qsv' || codec === 'h264_qsv') {
     args.push('-preset', 'veryfast', '-look_ahead', '0', '-b:v', br, '-g', gop, '-bf', '0');
   } else if (codec === 'libsvtav1') {
     args.push('-b:v', br, '-g', gop, '-svtav1-params', 'pred-struct=1:preset=10:film-grain=0');
   } else if (codec === 'libaom-av1') {
     args.push('-b:v', br, '-g', gop, '-cpu-used', '8', '-row-mt', '1', '-tiles', '2x2', '-usage', 'realtime');
-  } else if (codec === 'hevc_nvenc' || codec === 'h264_nvenc') {
-    args.push('-preset', 'p1', '-tune', 'll', '-rc', 'cbr', '-b:v', br, '-maxrate', br, '-bufsize', br, '-g', gop, '-bf', '0', '-delay', '0', '-zerolatency', '1');
-  } else if (codec === 'hevc_amf' || codec === 'h264_amf') {
-    args.push('-quality', 'speed', '-rc', 'cbr', '-b:v', br, '-g', gop, '-usage', 'ultralowlatency');
-  } else if (codec === 'hevc_qsv' || codec === 'h264_qsv') {
-    args.push('-preset', 'veryfast', '-look_ahead', '0', '-b:v', br, '-g', gop, '-bf', '0');
   } else {
     args.push('-preset', 'ultrafast', '-tune', 'zerolatency', '-b:v', br, '-g', gop, '-bf', '0', '-x264-params', 'scenecut=0:keyint=' + preset.gop);
   }
   return args;
 }
 
+function buildDdaFilter(preset) {
+  if (preset.scale) {
+    return `hwdownload,format=bgra,scale=${preset.scale}:flags=fast_bilinear,format=nv12`;
+  }
+  return 'hwdownload,format=bgra,format=nv12';
+}
+
+function buildGdiFilter(preset) {
+  if (preset.scale) {
+    return `scale=${preset.scale}:flags=fast_bilinear,format=nv12`;
+  }
+  return 'format=nv12';
+}
+
 function buildArgs(encoder, presetName, display = 0) {
   const preset = PRESETS[presetName] || PRESETS.balanced;
   const args = ['-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay'];
   args.push('-f', 'lavfi', '-i', `ddagrab=output_idx=${display}:framerate=${preset.fps}:draw_mouse=1`);
-  if (preset.scale) args.push('-vf', `scale=${preset.scale}`);
+  args.push('-vf', buildDdaFilter(preset));
   args.push('-c:v', encoder.codec);
   args.push(...buildEncodeFlags(encoder, preset));
-  args.push('-pix_fmt', 'yuv420p', '-an', '-f', 'mpegts', 'pipe:1');
+  args.push('-an', '-f', 'mpegts', 'pipe:1');
   return args;
 }
 
 function buildGdiArgs(encoder, presetName) {
   const preset = PRESETS[presetName] || PRESETS.balanced;
-  const args = ['-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay', '-f', 'gdigrab', '-framerate', String(preset.fps), '-draw_mouse', '1', '-i', 'desktop'];
-  if (preset.scale) args.push('-vf', `scale=${preset.scale}`);
-  args.push('-c:v', encoder.codec);
+  const args = [
+    '-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay',
+    '-f', 'gdigrab', '-framerate', String(preset.fps), '-draw_mouse', '1', '-i', 'desktop',
+    '-vf', buildGdiFilter(preset), '-c:v', encoder.codec
+  ];
   args.push(...buildEncodeFlags(encoder, preset));
-  args.push('-pix_fmt', 'yuv420p', '-an', '-f', 'mpegts', 'pipe:1');
+  args.push('-an', '-f', 'mpegts', 'pipe:1');
   return args;
 }
 
@@ -214,15 +220,7 @@ function startEncoderGdi(opts) {
 }
 
 module.exports = {
-  PRESETS,
-  CODEC_LABELS,
-  CODEC_PREFERENCE,
-  findFfmpeg,
-  detectEncoder,
-  detectEncoders,
-  pickEncoder,
-  isAv1,
-  isHevc,
-  startEncoder,
-  startEncoderGdi
+  PRESETS, CODEC_LABELS, CODEC_PREFERENCE,
+  findFfmpeg, detectEncoder, detectEncoders, pickEncoder,
+  isAv1, isHevc, startEncoder, startEncoderGdi
 };
