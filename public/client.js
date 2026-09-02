@@ -24,6 +24,7 @@ let pathMode = localStorage.getItem('cf-path') || 'auto';
 let codecMode = localStorage.getItem('cf-codec') || 'auto';
 let sens = parseFloat(localStorage.getItem('cf-sens') || '1.5');
 let lastTX = 0, lastTY = 0, touching = false, longT = null;
+let touchMoved = false, touchStartAt = 0, dragActive = false;
 let wakeLock = null, hideT = null, statsOn = false, lastRtt = 0, pingT = 0;
 let hwReady = false, activePath = null;
 
@@ -87,7 +88,6 @@ $('btnCopy').onclick = () => {
   if (code) navigator.clipboard?.writeText(code).then(() => setStatus('Copied'));
 };
 
-// When a phone/viewer joins, always offer WebRTC (Safari cannot play HW MPEG-TS)
 socket.on('viewer-joined', async ({ viewerId }) => {
   setConn('Viewer connected', '#4ade80');
   try {
@@ -132,7 +132,6 @@ socket.on('joined', (info) => {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-  // iPhone always WebRTC; desktop HW only if Path is explicitly Hardware
   const wantHw = !isIOS && pathMode === 'hw' && hwReady;
   if (wantHw) {
     activePath = 'hw';
@@ -157,7 +156,6 @@ socket.on('encode-started', (info) => {
 function startTsPlayer() {
   setStatus('Hardware stream starting…');
   setConn('HW path (MPEG-TS)', '#4ade80');
-
   const mediaSource = new MediaSource();
   vid.src = URL.createObjectURL(mediaSource);
   let sb = null;
@@ -180,7 +178,6 @@ function startTsPlayer() {
       }
     });
   });
-
   socket.on('ts', (buf) => {
     const data = buf instanceof ArrayBuffer ? buf : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     if (!sb) return;
@@ -237,34 +234,85 @@ function enableInput() {
   vid.addEventListener('touchstart', (e) => {
     e.preventDefault();
     resetHud();
+    if (e.touches.length > 1) return;
     const t = e.touches[0];
-    lastTX = t.clientX; lastTY = t.clientY; touching = true;
+    lastTX = t.clientX; lastTY = t.clientY;
+    touching = true;
+    touchMoved = false;
+    touchStartAt = Date.now();
+    dragActive = false;
+
     if (inputMode === 'touchscreen') {
       sendAbs(t.clientX, t.clientY);
       sendInput({ type: 'mousedown', button: 0 });
+      dragActive = true;
+    } else if (inputMode === 'touchpad-drag') {
+      longT = setTimeout(() => {
+        sendInput({ type: 'mousedown', button: 0 });
+        dragActive = true;
+        longT = null;
+      }, 200);
     } else {
-      longT = setTimeout(() => { sendInput({ type: 'click', button: 2 }); longT = null; }, 450);
+      longT = setTimeout(() => {
+        if (!touchMoved) sendInput({ type: 'click', button: 2 });
+        longT = null;
+      }, 500);
     }
   }, { passive: false });
 
   vid.addEventListener('touchmove', (e) => {
     e.preventDefault();
-    if (!touching) return;
+    if (!touching || e.touches.length !== 1) return;
     const t = e.touches[0];
     const dx = t.clientX - lastTX, dy = t.clientY - lastTY;
-    if (longT && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) { clearTimeout(longT); longT = null; }
-    if (inputMode === 'touchpad') {
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) sendRel(dx, dy);
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      touchMoved = true;
+      if (longT && inputMode !== 'touchpad-drag') {
+        clearTimeout(longT);
+        longT = null;
+      }
+    }
+    if (inputMode === 'touchscreen') {
+      sendAbs(t.clientX, t.clientY);
+    } else {
+      if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) sendRel(dx, dy);
       lastTX = t.clientX; lastTY = t.clientY;
-    } else sendAbs(t.clientX, t.clientY);
+    }
   }, { passive: false });
 
   vid.addEventListener('touchend', (e) => {
     e.preventDefault();
-    touching = false;
+    const duration = Date.now() - touchStartAt;
     if (longT) { clearTimeout(longT); longT = null; }
-    if (inputMode === 'touchscreen') sendInput({ type: 'mouseup', button: 0 });
-    else sendInput({ type: 'click', button: 0 });
+
+    if (inputMode === 'touchscreen') {
+      sendInput({ type: 'mouseup', button: 0 });
+      dragActive = false;
+    } else if (inputMode === 'touchpad-drag') {
+      if (dragActive) {
+        sendInput({ type: 'mouseup', button: 0 });
+        dragActive = false;
+      } else if (!touchMoved && duration < 250) {
+        sendInput({ type: 'click', button: 0 });
+      }
+    } else {
+      // touchpad: only click on short taps with little movement
+      if (!touchMoved && duration < 350) {
+        sendInput({ type: 'click', button: 0 });
+      }
+    }
+    touching = false;
+    touchMoved = false;
+  }, { passive: false });
+
+  vid.addEventListener('touchcancel', () => {
+    if (longT) { clearTimeout(longT); longT = null; }
+    if (dragActive) {
+      sendInput({ type: 'mouseup', button: 0 });
+      dragActive = false;
+    }
+    touching = false;
+    touchMoved = false;
   }, { passive: false });
 
   let pinchY = null;
