@@ -73,6 +73,8 @@ function startSessionEncoder(session, preset, codecPref) {
   session.activeEncoder = encoder;
   session.preset = preset || session.preset || 'balanced';
   session.codecPref = codecPref || session.codecPref || 'auto';
+  session._triedGdi = false;
+  session._triedH264 = false;
 
   const common = {
     ffmpegPath,
@@ -87,7 +89,21 @@ function startSessionEncoder(session, preset, codecPref) {
         console.log('[encoder] retrying with gdigrab…');
         session.encoder = startEncoderGdi({
           ...common,
-          onExit: (c) => console.log('[encoder-gdi] exited', c)
+          encoder: session.activeEncoder,
+          onExit: (c) => {
+            console.log('[encoder-gdi] exited', c);
+            if (!session._triedH264 && session.activeEncoder && /av1|hevc/i.test(session.activeEncoder.codec)) {
+              session._triedH264 = true;
+              const h264 = pickEncoder(availableCodecs, 'h264');
+              console.log('[encoder] retrying gdigrab with', h264.name);
+              session.activeEncoder = h264;
+              session.encoder = startEncoderGdi({
+                ...common,
+                encoder: h264,
+                onExit: (c2) => console.log('[encoder-gdi-h264] exited', c2)
+              });
+            }
+          }
         });
       }
     },
@@ -112,7 +128,8 @@ io.on('connection', (socket) => {
       activeEncoder: null,
       preset,
       codecPref,
-      _triedGdi: false
+      _triedGdi: false,
+      _triedH264: false
     };
     sessions.set(code, session);
     socket.join(code);
