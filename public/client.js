@@ -87,9 +87,22 @@ $('btnCopy').onclick = () => {
   if (code) navigator.clipboard?.writeText(code).then(() => setStatus('Copied'));
 };
 
-socket.on('viewer-joined', ({ viewerId }) => {
+// When a phone/viewer joins, always offer WebRTC (Safari cannot play HW MPEG-TS)
+socket.on('viewer-joined', async ({ viewerId }) => {
   setConn('Viewer connected', '#4ade80');
-  if (pathMode === 'webrtc' || (pathMode === 'auto' && localStream)) {
+  try {
+    if (!localStream) {
+      setStatus('Allow screen share (needed for phone / Compat)…');
+      localStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30 }, cursor: 'always' },
+        audio: false
+      });
+      localStream.getVideoTracks()[0].onended = () => cleanup();
+    }
+    if (peer) {
+      try { peer.destroy(); } catch (_) {}
+      peer = null;
+    }
     peer = new SimplePeer({
       initiator: true,
       stream: localStream,
@@ -97,8 +110,10 @@ socket.on('viewer-joined', ({ viewerId }) => {
       config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
     });
     peer.on('signal', (s) => socket.emit('signal', { target: viewerId, signal: s }));
-    peer.on('connect', () => setStatus('WebRTC connected'));
+    peer.on('connect', () => setStatus('WebRTC connected — phone can view'));
     peer.on('error', (e) => setStatus('Peer: ' + e.message));
+  } catch (e) {
+    setStatus('Screen share cancelled — iPhone will have no video (touch still works)');
   }
 });
 
@@ -115,13 +130,16 @@ socket.on('joined', (info) => {
   hwReady = !!info.hwReady;
   setStatus('Joined ' + code);
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const wantHw = pathMode === 'hw' || (pathMode === 'auto' && hwReady && !isIOS);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  // iPhone always WebRTC; desktop HW only if Path is explicitly Hardware
+  const wantHw = !isIOS && pathMode === 'hw' && hwReady;
   if (wantHw) {
     activePath = 'hw';
     startTsPlayer();
   } else {
     activePath = 'webrtc';
+    if (isIOS) setStatus('Joined ' + code + ' (WebRTC)');
     startWebrtcViewer();
   }
   setup.classList.add('hidden');
