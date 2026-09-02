@@ -48,9 +48,14 @@
   <h1>CouchForge</h1>
   <p class="sub">Hardware-accelerated local stream · Tailscale-ready</p>
   <div class="card" id="setup">
+    <div class="row" style="margin-top:0;">
+      <label>Room</label>
+      <input id="roomCode" maxlength="12" placeholder="COUCH1" style="text-transform:uppercase;letter-spacing:.1em;" />
+    </div>
+    <p class="hint" style="margin-top:.25rem;">Same room every time — saved on PC and phone. Not a password.</p>
     <button id="btnHost">Start Host (PC)</button>
     <div id="hostInfo" class="hidden">
-      <p style="text-align:center;margin-top:.75rem;">Session code</p>
+      <p style="text-align:center;margin-top:.75rem;">Room</p>
       <div style="display:flex;gap:.5rem;align-items:center;justify-content:center;">
         <div id="codeDisplay">------</div>
         <button id="btnCopy" class="small secondary">Copy</button>
@@ -59,14 +64,21 @@
     </div>
     <hr style="border:none;border-top:1px solid #333;margin:1.1rem 0;" />
     <p style="text-align:center;margin-bottom:.4rem;">Join</p>
-    <input id="joinCode" class="code" maxlength="6" placeholder="CODE" autocomplete="off" />
+    <input id="joinCode" class="code" maxlength="12" placeholder="COUCH1" autocomplete="username" />
+    <div class="row" style="margin-top:.4rem;justify-content:center;">
+      <label style="min-width:auto;display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+        <input type="checkbox" id="rememberRoom" checked style="width:auto;" />
+        Remember this room
+      </label>
+    </div>
     <button id="btnJoin" class="secondary">Join Session</button>
+    <button id="btnQuickJoin" class="secondary" style="display:none;margin-top:.4rem;">Join remembered room</button>
     <div class="row" style="margin-top:1rem;"><label>Path</label><select id="pathMode"><option value="auto" selected>Auto</option><option value="hw">Hardware (FFmpeg)</option><option value="webrtc">Compat (WebRTC)</option></select></div>
     <div class="row"><label>Quality</label><select id="perfMode"><option value="latency">Low latency</option><option value="balanced" selected>Balanced</option><option value="quality">High quality</option></select></div>
     <div class="row"><label>Codec</label><select id="codecMode"><option value="auto" selected>Auto (prefer H.264)</option><option value="av1">AV1</option><option value="hevc">HEVC</option><option value="h264">H.264</option></select></div>
     <div class="row"><label>Control</label><select id="inputMode"><option value="touchpad" selected>Touchpad (tap to click)</option><option value="touchpad-drag">Touchpad (hold to drag)</option><option value="touchscreen">Touchscreen</option></select></div>
     <div class="row"><label>Speed</label><input type="range" id="sens" min="0.5" max="3" step="0.1" value="1.5" /><span id="sensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span></div>
-    <p class="hint">While streaming use HUD Settings to change control/codec without reconnecting.</p>
+    <p class="hint">HUD Settings while streaming. Room is remembered — one tap next time.</p>
     <div id="status">Ready</div><div id="connStatus">…</div>
   </div>
   <div id="stage">
@@ -85,7 +97,7 @@
       <div class="row"><label>Speed</label><input type="range" id="liveSens" min="0.5" max="3" step="0.1" value="1.5" /><span id="liveSensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span></div>
       <div class="row"><label>Quality</label><select id="livePerf"><option value="latency">Low latency</option><option value="balanced">Balanced</option><option value="quality">High quality</option></select></div>
       <div class="row"><label>Codec</label><select id="liveCodec"><option value="auto">Auto</option><option value="h264">H.264</option><option value="hevc">HEVC</option><option value="av1">AV1</option></select></div>
-      <p class="hint">Control & speed apply instantly. Quality/codec: tap Apply encode (no reconnect).</p>
+      <p class="hint">Control & speed apply instantly. Quality/codec: Apply encode (no reconnect).</p>
       <button id="btnApplyEncode" class="secondary" style="margin-top:.5rem;">Apply encode</button>
       <button id="btnCloseSettings" class="secondary" style="margin-top:.35rem;">Close</button>
     </div>
