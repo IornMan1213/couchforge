@@ -134,6 +134,22 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('update-encode', (opts = {}) => {
+    const session = sessions.get(socket.sessionCode);
+    if (!session) return;
+    const preset = opts.preset || session.preset || 'balanced';
+    const codec = opts.codec || session.codecPref || 'auto';
+    console.log('[host] live update-encode', codec, preset, 'from', socket.role);
+    startSessionEncoder(session, preset, codec);
+    const payload = {
+      preset: session.preset,
+      encoder: session.activeEncoder,
+      codecPref: session.codecPref
+    };
+    io.to(socket.sessionCode).emit('encode-updated', payload);
+    if (session.hostSocket) session.hostSocket.emit('encode-started', payload);
+  });
+
   socket.on('stop-encode', () => {
     const session = sessions.get(socket.sessionCode);
     if (!session || socket.role !== 'host') return;
