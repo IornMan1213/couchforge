@@ -2,45 +2,53 @@
 
 All notable changes to CouchForge are documented here.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/).
+
 ---
 
-## [Unreleased]
+## [0.2.0] — 2026-09-02
+
+First tagged **main release** focused on daily-driver UX: stable rooms, live settings, installers, and docs.
 
 ### Added
 
-- **Fixed room codes + remember device** — default room `COUCH1`, saved on PC and phone in localStorage for long periods; **Join remembered room** one-tap; no random code every session.
-- **Live settings while streaming** — HUD **Settings** panel: Control, Speed, Quality, Codec without disconnecting.
-- **Apply encode** — restart FFmpeg in place (`update-encode`).
-- Wiki under `docs/` and this **CHANGELOG.md**.
+- **Fixed room codes + remember device**
+  - Default room `COUCH1` (not a random code every session)
+  - Saved in browser localStorage on PC and phone
+  - **Remember this room** checkbox
+  - **Join remembered room** one-tap button
+- **Live settings while streaming**
+  - HUD **Settings**: Control mode, pointer speed, Quality, Codec
+  - Control/speed apply immediately
+  - **Apply encode** restarts FFmpeg without leaving the session
+- **Installers** under `installers/`
+  - Windows: `Install-CouchForge.cmd` / `.ps1` (download, npm, FFmpeg helper, Desktop launcher)
+  - Linux: `install.sh`
+  - macOS: `install.sh` + `.command` launcher
+- **GitHub Actions** release workflow (publishes install scripts on tag `v*`)
+- Expanded **docs/** wiki and deeper troubleshooting
 
 ### Changed
 
-- Session “password” replaced by a stable **room name** you choose once (e.g. COUCH1).
+- Version **0.2.0**
+- Random session code replaced by stable **room name**
+
+### Fixed (from 0.1.x)
+
+- iPhone black screen (WebRTC on join)
+- Encoder DXGI failures (gdigrab-first)
+- Touchpad always-click; hold-to-drag option
+- Auto codec prefers H.264
+
+### Known limitations
+
+- HW MPEG-TS not for iOS Safari
+- Installers require Node.js 18+ (Windows can winget-install)
+- Native single-file `.exe` with embedded Node/robotjs not shipped yet — use Windows installer script
+- Room codes are convenience; use Tailscale for security
 
 ---
 
 ## [0.1.x] — 2026-09 — Foundation
 
-### Added
-
-- Hardware encode + WebRTC compat, robotjs input, touchpad modes, Tailscale-friendly bind.
-
-### Fixed
-
-- iPhone black screen (WebRTC on join), encoder d3d11, always-click touchpad, default AV1 preference.
-
-### Known limitations
-
-- HW MPEG-TS not for iOS Safari; use WebRTC for phones.
-- Room code is not a strong secret — use Tailscale ACLs.
-
----
-
-## Upgrade
-
-```bat
-git pull
-npm start
-```
-
-Hard-refresh the phone. Set room to **COUCH1** on host once; phone remembers after first join.
+Hardware encode, WebRTC compat, robotjs input, auto FFmpeg, Tailscale-friendly host.

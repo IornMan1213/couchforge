@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package installer assets
+        run: |
+          mkdir -p dist
+          cp installers/windows/Install-CouchForge.cmd dist/
+          cp installers/windows/Install-CouchForge.ps1 dist/
+          cp installers/windows/Start-CouchForge.cmd dist/
+          cp installers/linux/install.sh dist/CouchForge-linux-install.sh
+          cp installers/macos/install.sh dist/CouchForge-macos-install.sh
+          cp installers/README.md dist/INSTALLERS.md
+          cp CHANGELOG.md dist/
+          chmod +x dist/*.sh
+          zip -r dist/CouchForge-source-installers.zip installers CHANGELOG.md README.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body_path: CHANGELOG.md
+          files: |
+            dist/Install-CouchForge.cmd
+            dist/Install-CouchForge.ps1
+            dist/Start-CouchForge.cmd
+            dist/CouchForge-linux-install.sh
+            dist/CouchForge-macos-install.sh
+            dist/INSTALLERS.md
+            dist/CHANGELOG.md
+            dist/CouchForge-source-installers.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
