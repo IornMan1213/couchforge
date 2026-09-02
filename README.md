@@ -10,7 +10,9 @@ Inspired by Sunshine / Steam Link goals. Not a drop-in Sunshine replacement yet;
 
 **Full documentation, step-by-step guides, FAQ, and troubleshooting:**
 
-### [CouchForge Wiki](docs/README.md)
+### [CouchForge Wiki (docs/)](docs/README.md)
+
+Also: https://github.com/IornMan1213/couchforge/wiki (enable Wikis in repo Settings if empty; mirror from `docs/`).
 
 | Topic | Link |
 |-------|------|
@@ -25,6 +27,7 @@ Inspired by Sunshine / Steam Link goals. Not a drop-in Sunshine replacement yet;
 | FAQ | [docs/09-faq.md](docs/09-faq.md) |
 | Tips | [docs/10-tips.md](docs/10-tips.md) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Changelog** | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
@@ -42,33 +45,30 @@ npm start
 2. When the phone joins, **Allow screen share** on the PC
 3. iPhone Safari: `http://<tailscale-ip>:3090` → enter code → **Join**
 
-**iPhone:** video uses **WebRTC** (Safari cannot play the Hardware MPEG-TS path).  
-**Control:** **Touchpad (tap to click)** — move without clicking; short tap to click; use **hold to drag** when you need click-drag.
+**iPhone:** video uses **WebRTC**.  
+**Control:** **Touchpad (tap to click)** — or change anytime via HUD **Settings**.
 
 Default port: **3090**.
+
+### Live settings (no reconnect)
+
+While streaming, open **Settings** on the HUD:
+
+- **Control** / **Speed** — apply immediately (tap vs hold-to-drag, sensitivity)
+- **Quality** / **Codec** — tap **Apply encode** to restart FFmpeg without leaving the session (test AV1, etc.)
+
+### Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of fixes and features.
 
 ---
 
 ## Features (v0.1)
 
-- Hardware encode path: FFmpeg `gdigrab` / `ddagrab` → H.264 / HEVC / AV1 (NVENC, AMF, QSV) with fallbacks
-- Auto FFmpeg detect/download on install (`npm run ensure-ffmpeg`)
-- Compat path: WebRTC for iPhone Safari
-- Touchpad (tap to click), hold-to-drag, touchscreen
-- Virtual keyboard, two-finger scroll, long-press right-click
-- Gamepad → key mapping (basic)
-- Tailscale-friendly (`0.0.0.0` bind)
-- Session codes, stats, wake lock
-
-## Requirements
-
-- Windows 10/11, Node.js 18+
-- FFmpeg optional for Compat; recommended for Hardware path
-- `robotjs` for mouse/keyboard injection
-
-## Related
-
-[Couch Share](https://github.com/IornMan1213/couch-share) — lighter WebRTC-only app (port 3080).
+- Hardware encode + Compat WebRTC for iPhone
+- Auto FFmpeg download, robotjs input
+- Touchpad / hold-to-drag / touchscreen + live settings
+- Virtual keyboard, scroll, stats, Tailscale-friendly
 
 ## License
 

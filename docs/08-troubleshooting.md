@@ -42,96 +42,84 @@ Old builds used `ddagrab` + software scale without `hwdownload`. **Update** to l
 
 ### `exited ... bytes= 0`
 
-Encoder produced nothing — try:
-
-- Codec **H.264**
-- Ensure GPU drivers are current
-- Run the gdigrab test command above
-- Fall back to Compat WebRTC
-
-### `producing data…` then later `SIGTERM`
-
-Often the session restarted or host navigated away — normal if you stopped the session.
+Encoder produced nothing — try Codec **H.264**, update GPU drivers, run gdigrab test, or Compat WebRTC.
 
 ### Default encoder still AV1 on very old clone
 
-`git pull` — Auto now prefers H.264 for browser friendliness.
+`git pull` — Auto now prefers H.264.
 
 ---
 
 ## Every touch clicks
 
-You are on an old client, or still expecting old behavior.
-
 1. `git pull` and restart host
 2. Hard-refresh phone
-3. Set **Control → Touchpad (tap to click)**
+3. Set **Control → Touchpad (tap to click)** or use live **Settings** while streaming
 4. Slide should **move only**; short **tap** clicks
 
-Need drag: **Touchpad (hold to drag)** — hold ~0.2s then move.
-
-Details: [Controls](05-controls.md).
+Need drag: **Touchpad (hold to drag)** — or HUD Settings while connected.
 
 ---
 
 ## No mouse / keyboard response
 
 1. Console must say `[input] robotjs loaded`
-2. Reinstall: `npm install robotjs`
-3. Windows: install C++ Build Tools if compile failed
-4. Confirm you are the **viewer** in an active session
+2. `npm install robotjs`
+3. C++ Build Tools if compile failed
 
 ---
 
 ## Phone cannot open the page
 
-See [Networking](07-networking.md).
-
-Quick checks:
-
-- Tailscale Connected on both devices
-- URL is `http://100.x.x.x:3090`
-- `npm start` still running
-- Firewall allows Node on 3090
+See [Networking](07-networking.md). Tailscale Connected, `http://100.x.x.x:3090`, firewall TCP 3090.
 
 ---
 
 ## Session not found
 
-- Code is case-insensitive but must match the **current** host session
-- Restarting the host creates a **new** code
-- Host browser tab must still be in the session
+Code must match the **current** host session. Restarting host creates a new code.
 
 ---
 
 ## High latency / stutter
 
-1. Prefer Tailscale direct (not DERP relay) — check Tailscale admin for relay
-2. Quality → **Low latency**
-3. Lower phone Safari energy constraints (charge phone, low power mode off)
-4. Close heavy PC GPU apps competing with encode
-5. 5 GHz Wi-Fi for the phone if possible
+Tailscale direct path, Quality **Low latency**, charge phone, 5 GHz Wi-Fi, close heavy GPU apps.
 
 ---
 
-## robotjs / npm errors
+## Deep dive: black screen playbook
 
-```text
-npm ERR! gyp ...
-```
+1. PC is host tab + `npm start`; phone only Joins.
+2. When phone joins, PC Chrome must **Share** entire screen.
+3. PC status: `WebRTC connected — phone can view`.
+4. Hard-refresh phone after every `git pull`.
+5. URL is `http://100.x.x.x:3090` with Tailscale Connected.
+6. Firewall allows TCP 3090 for Node.
+7. Missing robotjs does not cause black video; missing screen share does.
 
-Install **Visual Studio Build Tools** with C++ workload, then:
+| Host log | Meaning | Action |
+|----------|---------|--------|
+| `producing data…` | FFmpeg HW alive | Phone still needs WebRTC share |
+| `Screen share cancelled` | Capture denied | Share again |
+| No viewer-joined | Phone never joined | Check code/IP |
 
-```bat
-npm install robotjs
-```
+## Deep dive: testing AV1 without reconnecting
 
----
+1. Stay in session → HUD **Settings**.
+2. Codec → **AV1** → **Apply encode**.
+3. Watch host log for `av1_nvenc` or fallback.
+4. Phone picture is still WebRTC (browser capture), not AV1 decode. AV1 applies to the Hardware MPEG-TS pipeline.
+5. If encode fails (`bytes=0`), Apply **H.264** without leaving the session.
 
-## Still stuck
+## Deep dive: input
 
-1. Copy the **full** `npm start` console from start through the failed join
-2. Note: PC browser message, phone message, Path/Control settings
-3. Confirm `git log -1` is recent on the PC
+| Feeling | Fix |
+|---------|-----|
+| Click on every lift | Update client; Touchpad (tap) |
+| Cannot drag | Settings → Touchpad (hold to drag) |
+| Cursor speed wrong | Settings → Speed |
+| No movement | `npm install robotjs`, restart host |
 
-Open an issue on the GitHub repo with that info.
+## Cannot change settings without reconnecting
+
+Use HUD **Settings** while streaming. Control/speed are instant; encode uses **Apply encode**.
