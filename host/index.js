@@ -211,6 +211,15 @@ io.on('connection', (socket) => {
 
 async function main() {
   ffmpegPath = await findFfmpeg();
+  if (!ffmpegPath) {
+    console.log('[host] FFmpeg not found — trying automatic download…');
+    try {
+      const { ensure } = require('../scripts/ensure-ffmpeg');
+      ffmpegPath = await ensure();
+    } catch (err) {
+      console.log('[host] Auto-download failed:', err.message);
+    }
+  }
   if (ffmpegPath) {
     const detected = await detectEncoders(ffmpegPath);
     availableCodecs = detected.available;
@@ -222,7 +231,8 @@ async function main() {
       console.log('[host] AV1 hardware/software encode is available');
     }
   } else {
-    console.log('[host] FFmpeg not found in PATH — hardware path disabled, use WebRTC compat mode');
+    console.log('[host] FFmpeg not found — hardware path disabled, use WebRTC compat mode');
+    console.log('[host] Or run: npm run ensure-ffmpeg');
   }
 
   server.listen(PORT, '0.0.0.0', () => {
