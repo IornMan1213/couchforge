@@ -1,6 +1,6 @@
 /**
  * CouchForge host — hardware encode path + signaling + input.
- * Windows 10/11 + FFmpeg recommended.
+ * Windows 10/11 + FFmpeg recommended. Supports AV1 / HEVC / H.264.
  */
 const express = require('express');
 const http = require('http');
@@ -8,7 +8,13 @@ const { Server } = require('socket.io');
 const path = require('path');
 const os = require('os');
 const {
-  findFfmpeg, detectEncoder, startEncoder, startEncoderGdi, PRESETS
+  findFfmpeg,
+  detectEncoders,
+  pickEncoder,
+  startEncoder,
+  startEncoderGdi,
+  PRESETS,
+  CODEC_LABELS
 } = require('./encoder');
 const { inject } = require('./input');
 
@@ -21,7 +27,8 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const sessions = new Map();
 let ffmpegPath = null;
-let encoderInfo = null;
+let availableCodecs = [];
+let defaultEncoder = null;
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -51,17 +58,26 @@ function stopSessionEncoder(session) {
   }
 }
 
-function startSessionEncoder(session, preset) {
+function resolveEncoder(codecPref) {
+  return pickEncoder(availableCodecs, codecPref || 'auto');
+}
+
+function startSessionEncoder(session, preset, codecPref) {
   stopSessionEncoder(session);
-  if (!ffmpegPath || !encoderInfo) {
+  if (!ffmpegPath || !availableCodecs.length) {
     console.log('[host] FFmpeg/encoder not ready — use compat (WebRTC) mode on client');
     return;
   }
 
+  const encoder = resolveEncoder(codecPref || session.codecPref || 'auto');
+  session.activeEncoder = encoder;
+  session.preset = preset || session.preset || 'balanced';
+  session.codecPref = codecPref || session.codecPref || 'auto';
+
   const common = {
     ffmpegPath,
-    encoder: encoderInfo,
-    preset: preset || 'balanced',
+    encoder,
+    preset: session.preset,
     display: 0,
     onData: (chunk) => broadcastTs(session, chunk),
     onExit: (code) => {
@@ -78,8 +94,8 @@ function startSessionEncoder(session, preset) {
     onError: (err) => console.error('[encoder]', err.message)
   };
 
+  console.log('[host] starting encode', encoder.name, 'preset', session.preset);
   session.encoder = startEncoder(common);
-  session.preset = preset;
 }
 
 io.on('connection', (socket) => {
@@ -88,11 +104,14 @@ io.on('connection', (socket) => {
   socket.on('create-session', (opts = {}) => {
     const code = generateCode();
     const preset = opts.preset || 'balanced';
+    const codecPref = opts.codec || 'auto';
     const session = {
       hostSocket: socket,
       viewers: new Set(),
       encoder: null,
+      activeEncoder: null,
       preset,
+      codecPref,
       _triedGdi: false
     };
     sessions.set(code, session);
@@ -101,18 +120,30 @@ io.on('connection', (socket) => {
     socket.role = 'host';
     socket.emit('session-created', {
       code,
-      encoder: encoderInfo,
+      encoder: defaultEncoder,
+      availableCodecs: availableCodecs.map((id) => ({
+        id,
+        name: CODEC_LABELS[id] || id
+      })),
       ffmpeg: !!ffmpegPath,
       presets: Object.keys(PRESETS)
     });
-    console.log('session', code, 'encoder', encoderInfo?.name || 'none');
+    console.log('session', code, 'default encoder', defaultEncoder?.name || 'none');
   });
 
   socket.on('start-encode', (opts = {}) => {
     const session = sessions.get(socket.sessionCode);
     if (!session || socket.role !== 'host') return;
-    startSessionEncoder(session, opts.preset || session.preset || 'balanced');
-    socket.emit('encode-started', { preset: session.preset, encoder: encoderInfo });
+    startSessionEncoder(
+      session,
+      opts.preset || session.preset || 'balanced',
+      opts.codec || session.codecPref || 'auto'
+    );
+    socket.emit('encode-started', {
+      preset: session.preset,
+      encoder: session.activeEncoder,
+      codecPref: session.codecPref
+    });
   });
 
   socket.on('stop-encode', () => {
@@ -134,20 +165,26 @@ io.on('connection', (socket) => {
     socket.role = 'viewer';
     socket.emit('joined', {
       code,
-      encoder: encoderInfo,
+      encoder: session.activeEncoder || defaultEncoder,
+      availableCodecs: availableCodecs.map((id) => ({
+        id,
+        name: CODEC_LABELS[id] || id
+      })),
       preset: session.preset,
-      hwReady: !!(ffmpegPath && encoderInfo)
+      hwReady: !!(ffmpegPath && availableCodecs.length)
     });
     session.hostSocket.emit('viewer-joined', { viewerId: socket.id });
     if (!session.encoder && ffmpegPath) {
-      startSessionEncoder(session, session.preset);
+      startSessionEncoder(session, session.preset, session.codecPref);
     }
   });
 
   socket.on('signal', (data) => {
     const { target, signal } = data;
     if (target) io.to(target).emit('signal', { from: socket.id, signal });
-    else if (socket.sessionCode) socket.to(socket.sessionCode).emit('signal', { from: socket.id, signal });
+    else if (socket.sessionCode) {
+      socket.to(socket.sessionCode).emit('signal', { from: socket.id, signal });
+    }
   });
 
   socket.on('input', (event) => {
@@ -175,9 +212,15 @@ io.on('connection', (socket) => {
 async function main() {
   ffmpegPath = await findFfmpeg();
   if (ffmpegPath) {
-    encoderInfo = await detectEncoder(ffmpegPath);
+    const detected = await detectEncoders(ffmpegPath);
+    availableCodecs = detected.available;
+    defaultEncoder = detected.best;
     console.log('[host] FFmpeg:', ffmpegPath);
-    console.log('[host] Encoder:', encoderInfo.name, `(${encoderInfo.codec})`);
+    console.log('[host] Available codecs:', availableCodecs.join(', ') || '(none)');
+    console.log('[host] Default encoder:', defaultEncoder.name, `(${defaultEncoder.codec})`);
+    if (availableCodecs.some((c) => /av1/i.test(c))) {
+      console.log('[host] AV1 hardware/software encode is available');
+    }
   } else {
     console.log('[host] FFmpeg not found in PATH — hardware path disabled, use WebRTC compat mode');
   }
@@ -188,7 +231,7 @@ async function main() {
     console.log('  CouchForge host running');
     console.log('========================================');
     console.log(`Local:   http://localhost:${PORT}`);
-    ips.forEach(ip => console.log(`Network: http://${ip}:${PORT}`));
+    ips.forEach((ip) => console.log(`Network: http://${ip}:${PORT}`));
     console.log('\nOpen the URL on this PC, start a session,');
     console.log('then join from your phone over Tailscale.');
     console.log('========================================\n');
