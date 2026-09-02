@@ -1,37 +1,28 @@
 # CouchForge
 
-From-scratch **local game/desktop streamer** with hardware encode (FFmpeg NVENC/AMF/QSV) and browser control from your phone — Tailscale-friendly.
-
-Inspired by Sunshine / Steam Link goals. Not a drop-in Sunshine replacement yet; a foundation you can run today and extend.
+**v0.2.0** — Local hardware-accelerated desktop/game streamer (Sunshine-inspired). Control your Windows PC from an iPhone over Tailscale.
 
 ---
 
-## Wiki (start here for problems)
+## Installers (no full repo clone)
 
-**Full documentation, step-by-step guides, FAQ, and troubleshooting:**
+Download from **[Releases](https://github.com/IornMan1213/couchforge/releases)** after tag `v0.2.0` is published:
 
-### [CouchForge Wiki (docs/)](docs/README.md)
+| OS | File |
+|----|------|
+| **Windows** | `Install-CouchForge.cmd` (+ `Install-CouchForge.ps1`) — double-click |
+| **Linux** | `CouchForge-linux-install.sh` |
+| **macOS** | `CouchForge-macos-install.sh` |
 
-Also: https://github.com/IornMan1213/couchforge/wiki (enable Wikis in repo Settings if empty; mirror from `docs/`).
+Scripts also live in-repo: [installers/](installers/) · [installers/README.md](installers/README.md)
 
-| Topic | Link |
-|-------|------|
-| Getting started | [docs/01-getting-started.md](docs/01-getting-started.md) |
-| Installation | [docs/02-installation.md](docs/02-installation.md) |
-| Host PC setup | [docs/03-host-setup.md](docs/03-host-setup.md) |
-| iPhone / viewer | [docs/04-iphone-viewer.md](docs/04-iphone-viewer.md) |
-| Controls (tap vs drag) | [docs/05-controls.md](docs/05-controls.md) |
-| Paths and codecs | [docs/06-paths-and-codecs.md](docs/06-paths-and-codecs.md) |
-| Tailscale / network | [docs/07-networking.md](docs/07-networking.md) |
-| Troubleshooting | [docs/08-troubleshooting.md](docs/08-troubleshooting.md) |
-| FAQ | [docs/09-faq.md](docs/09-faq.md) |
-| Tips | [docs/10-tips.md](docs/10-tips.md) |
-| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| **Changelog** | [CHANGELOG.md](CHANGELOG.md) |
+Windows installs to `%LOCALAPPDATA%\CouchForge` and puts **Start CouchForge** on the Desktop.
+
+> A single native `.exe` with Node + robotjs embedded is not shipped yet (native addon limits). The Windows installer is the supported one-click path.
 
 ---
 
-## Quick start
+## Quick start (from source)
 
 ```bat
 git clone https://github.com/IornMan1213/couchforge.git
@@ -41,34 +32,26 @@ npm install robotjs
 npm start
 ```
 
-1. PC Chrome: `http://localhost:3090` → **Start Host** → copy code
-2. When the phone joins, **Allow screen share** on the PC
-3. iPhone Safari: `http://<tailscale-ip>:3090` → enter code → **Join**
+1. PC: `http://localhost:3090` → room **COUCH1** → **Start Host**
+2. Allow screen share when the phone joins
+3. Phone: `http://<tailscale-ip>:3090` → **Join COUCH1** (remembered after first time)
 
-**iPhone:** video uses **WebRTC**.  
-**Control:** **Touchpad (tap to click)** — or change anytime via HUD **Settings**.
-
-Default port: **3090**.
-
-### Live settings (no reconnect)
-
-While streaming, open **Settings** on the HUD:
-
-- **Control** / **Speed** — apply immediately (tap vs hold-to-drag, sensitivity)
-- **Quality** / **Codec** — tap **Apply encode** to restart FFmpeg without leaving the session (test AV1, etc.)
-
-### Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a full history of fixes and features.
+Port **3090**. Live **Settings** while streaming (control / codec without reconnect).
 
 ---
 
-## Features (v0.1)
+## Wiki
 
-- Hardware encode + Compat WebRTC for iPhone
-- Auto FFmpeg download, robotjs input
-- Touchpad / hold-to-drag / touchscreen + live settings
-- Virtual keyboard, scroll, stats, Tailscale-friendly
+[docs/README.md](docs/README.md) · [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## Features
+
+- Hardware encode (NVENC/AMF/QSV) + WebRTC for iPhone
+- Fixed room codes + remember device
+- Touchpad / hold-to-drag / touchscreen
+- Live settings, virtual keyboard, Tailscale-friendly
 
 ## License
 
