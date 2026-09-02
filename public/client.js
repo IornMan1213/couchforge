@@ -22,6 +22,8 @@ let inputMode = localStorage.getItem('cf-mode') || 'touchpad';
 let perfMode = localStorage.getItem('cf-perf') || 'balanced';
 let pathMode = localStorage.getItem('cf-path') || 'auto';
 let codecMode = localStorage.getItem('cf-codec') || 'auto';
+let roomCode = (localStorage.getItem('cf-room') || localStorage.getItem('cf-last-code') || 'COUCH1').toUpperCase();
+let rememberRoom = localStorage.getItem('cf-remember') !== '0';
 let sens = parseFloat(localStorage.getItem('cf-sens') || '1.5');
 let lastTX = 0, lastTY = 0, touching = false, longT = null;
 let touchMoved = false, touchStartAt = 0, dragActive = false;
@@ -37,11 +39,32 @@ $('pathMode').value = pathMode;
 if ($('codecMode')) $('codecMode').value = codecMode;
 $('sens').value = sens;
 $('sensVal').textContent = sens.toFixed(1) + 'x';
+if ($('roomCode')) $('roomCode').value = roomCode;
+if ($('joinCode')) $('joinCode').value = localStorage.getItem('cf-last-code') || roomCode;
+if ($('rememberRoom')) $('rememberRoom').checked = rememberRoom;
+if ($('btnQuickJoin') && (localStorage.getItem('cf-last-code') || roomCode)) {
+  const q = localStorage.getItem('cf-last-code') || roomCode;
+  $('btnQuickJoin').style.display = 'block';
+  $('btnQuickJoin').textContent = 'Join ' + q;
+}
 
 $('inputMode').onchange = (e) => { inputMode = e.target.value; localStorage.setItem('cf-mode', inputMode); };
 $('perfMode').onchange = (e) => { perfMode = e.target.value; localStorage.setItem('cf-perf', perfMode); };
 $('pathMode').onchange = (e) => { pathMode = e.target.value; localStorage.setItem('cf-path', pathMode); };
 if ($('codecMode')) $('codecMode').onchange = (e) => { codecMode = e.target.value; localStorage.setItem('cf-codec', codecMode); };
+if ($('roomCode')) {
+  $('roomCode').oninput = (e) => {
+    roomCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+    e.target.value = roomCode;
+    localStorage.setItem('cf-room', roomCode || 'COUCH1');
+  };
+}
+if ($('rememberRoom')) {
+  $('rememberRoom').onchange = (e) => {
+    rememberRoom = !!e.target.checked;
+    localStorage.setItem('cf-remember', rememberRoom ? '1' : '0');
+  };
+}
 $('sens').oninput = (e) => {
   sens = parseFloat(e.target.value);
   $('sensVal').textContent = sens.toFixed(1) + 'x';
@@ -65,11 +88,19 @@ $('btnHost').onclick = async () => {
       return;
     }
   }
-  socket.emit('create-session', { preset: perfMode, codec: codecMode });
+  if ($('roomCode')) {
+    roomCode = ($('roomCode').value || roomCode || 'COUCH1').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+    if (roomCode.length < 4) roomCode = 'COUCH1';
+    localStorage.setItem('cf-room', roomCode);
+  }
+  socket.emit('create-session', { preset: perfMode, codec: codecMode, code: roomCode });
 };
 
 socket.on('session-created', (info) => {
   code = info.code;
+  roomCode = code;
+  localStorage.setItem('cf-room', code);
+  localStorage.setItem('cf-last-code', code);
   codeDisplay.textContent = code;
   hostInfo.classList.remove('hidden');
   const enc = info.encoder ? `${info.encoder.name}` : 'no HW encoder detected';
@@ -77,7 +108,7 @@ socket.on('session-created', (info) => {
   encInfo.textContent = info.ffmpeg
     ? `FFmpeg ready · ${enc}` + (av1 ? ' · AV1 available' : '')
     : 'FFmpeg not found — use Compat path or install FFmpeg';
-  setStatus('Session ' + code);
+  setStatus('Room ' + code);
   setConn('Waiting for viewer…', '#fbbf24');
   if (pathMode !== 'webrtc' && info.ffmpeg) {
     socket.emit('start-encode', { preset: perfMode, codec: codecMode });
@@ -114,17 +145,39 @@ socket.on('viewer-joined', async ({ viewerId }) => {
   }
 });
 
-$('btnJoin').onclick = () => {
-  const c = $('joinCode').value.trim().toUpperCase();
-  if (c.length < 4) return setStatus('Enter code');
+function doJoin(codeStr) {
+  const c = String(codeStr || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (c.length < 4) return setStatus('Enter room code (min 4 chars)');
   role = 'viewer';
+  if ($('joinCode')) $('joinCode').value = c;
+  if (rememberRoom !== false) {
+    localStorage.setItem('cf-last-code', c);
+    localStorage.setItem('cf-room', c);
+  }
   socket.emit('join-session', c);
-  setStatus('Joining…');
-};
+  setStatus('Joining ' + c + '…');
+}
+
+$('btnJoin').onclick = () => doJoin($('joinCode') ? $('joinCode').value : '');
+if ($('btnQuickJoin')) {
+  $('btnQuickJoin').onclick = () => {
+    doJoin(localStorage.getItem('cf-last-code') || localStorage.getItem('cf-room') || roomCode || 'COUCH1');
+  };
+}
+if ($('joinCode')) {
+  $('joinCode').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doJoin($('joinCode').value);
+  });
+}
 
 socket.on('joined', (info) => {
   code = info.code;
   hwReady = !!info.hwReady;
+  if (rememberRoom !== false) {
+    localStorage.setItem('cf-last-code', code);
+    localStorage.setItem('cf-room', code);
+    roomCode = code;
+  }
   setStatus('Joined ' + code);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
