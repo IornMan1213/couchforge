@@ -4,6 +4,8 @@
  */
 const { spawn } = require('child_process');
 const which = require('which');
+const path = require('path');
+const fs = require('fs');
 
 const PRESETS = {
   latency:  { fps: 30, scale: '1280:720',  bitrate: '4M',  bitrateAv1: '2.5M', gop: 30 },
@@ -11,7 +13,6 @@ const PRESETS = {
   quality:  { fps: 60, scale: '1920:1080', bitrate: '20M', bitrateAv1: '12M',  gop: 60 }
 };
 
-/** Ordered preference when user picks "auto" */
 const CODEC_PREFERENCE = [
   'av1_nvenc', 'av1_amf', 'av1_qsv',
   'hevc_nvenc', 'hevc_amf', 'hevc_qsv',
@@ -35,7 +36,31 @@ const CODEC_LABELS = {
   libx264: 'Software H.264 (x264)'
 };
 
+function localBundledFfmpeg() {
+  const binName = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
+  const roots = [
+    path.join(__dirname, '..', 'tools', 'ffmpeg', 'bin', binName),
+    path.join(__dirname, '..', 'tools', 'ffmpeg', binName)
+  ];
+  const toolsDir = path.join(__dirname, '..', 'tools', 'ffmpeg');
+  try {
+    if (fs.existsSync(toolsDir)) {
+      for (const name of fs.readdirSync(toolsDir)) {
+        roots.push(path.join(toolsDir, name, 'bin', binName));
+      }
+    }
+  } catch (_) {}
+  for (const p of roots) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch (_) {}
+  }
+  return null;
+}
+
 async function findFfmpeg() {
+  const bundled = localBundledFfmpeg();
+  if (bundled) return bundled;
   try {
     return await which('ffmpeg');
   } catch {
@@ -124,87 +149,23 @@ function buildEncodeFlags(encoder, preset) {
   const args = [];
 
   if (codec === 'av1_nvenc') {
-    args.push(
-      '-preset', 'p1',
-      '-tune', 'll',
-      '-rc', 'cbr',
-      '-b:v', br,
-      '-maxrate', br,
-      '-bufsize', br,
-      '-g', gop,
-      '-bf', '0',
-      '-delay', '0',
-      '-zerolatency', '1'
-    );
+    args.push('-preset', 'p1', '-tune', 'll', '-rc', 'cbr', '-b:v', br, '-maxrate', br, '-bufsize', br, '-g', gop, '-bf', '0', '-delay', '0', '-zerolatency', '1');
   } else if (codec === 'av1_amf') {
-    args.push(
-      '-quality', 'speed',
-      '-rc', 'cbr',
-      '-b:v', br,
-      '-g', gop,
-      '-usage', 'ultralowlatency'
-    );
+    args.push('-quality', 'speed', '-rc', 'cbr', '-b:v', br, '-g', gop, '-usage', 'ultralowlatency');
   } else if (codec === 'av1_qsv') {
-    args.push(
-      '-preset', 'veryfast',
-      '-look_ahead', '0',
-      '-b:v', br,
-      '-g', gop,
-      '-bf', '0'
-    );
+    args.push('-preset', 'veryfast', '-look_ahead', '0', '-b:v', br, '-g', gop, '-bf', '0');
   } else if (codec === 'libsvtav1') {
-    args.push(
-      '-b:v', br,
-      '-g', gop,
-      '-svtav1-params', 'pred-struct=1:preset=10:film-grain=0'
-    );
+    args.push('-b:v', br, '-g', gop, '-svtav1-params', 'pred-struct=1:preset=10:film-grain=0');
   } else if (codec === 'libaom-av1') {
-    args.push(
-      '-b:v', br,
-      '-g', gop,
-      '-cpu-used', '8',
-      '-row-mt', '1',
-      '-tiles', '2x2',
-      '-usage', 'realtime'
-    );
+    args.push('-b:v', br, '-g', gop, '-cpu-used', '8', '-row-mt', '1', '-tiles', '2x2', '-usage', 'realtime');
   } else if (codec === 'hevc_nvenc' || codec === 'h264_nvenc') {
-    args.push(
-      '-preset', 'p1',
-      '-tune', 'll',
-      '-rc', 'cbr',
-      '-b:v', br,
-      '-maxrate', br,
-      '-bufsize', br,
-      '-g', gop,
-      '-bf', '0',
-      '-delay', '0',
-      '-zerolatency', '1'
-    );
+    args.push('-preset', 'p1', '-tune', 'll', '-rc', 'cbr', '-b:v', br, '-maxrate', br, '-bufsize', br, '-g', gop, '-bf', '0', '-delay', '0', '-zerolatency', '1');
   } else if (codec === 'hevc_amf' || codec === 'h264_amf') {
-    args.push(
-      '-quality', 'speed',
-      '-rc', 'cbr',
-      '-b:v', br,
-      '-g', gop,
-      '-usage', 'ultralowlatency'
-    );
+    args.push('-quality', 'speed', '-rc', 'cbr', '-b:v', br, '-g', gop, '-usage', 'ultralowlatency');
   } else if (codec === 'hevc_qsv' || codec === 'h264_qsv') {
-    args.push(
-      '-preset', 'veryfast',
-      '-look_ahead', '0',
-      '-b:v', br,
-      '-g', gop,
-      '-bf', '0'
-    );
+    args.push('-preset', 'veryfast', '-look_ahead', '0', '-b:v', br, '-g', gop, '-bf', '0');
   } else {
-    args.push(
-      '-preset', 'ultrafast',
-      '-tune', 'zerolatency',
-      '-b:v', br,
-      '-g', gop,
-      '-bf', '0',
-      '-x264-params', 'scenecut=0:keyint=' + preset.gop
-    );
+    args.push('-preset', 'ultrafast', '-tune', 'zerolatency', '-b:v', br, '-g', gop, '-bf', '0', '-x264-params', 'scenecut=0:keyint=' + preset.gop);
   }
   return args;
 }
@@ -212,35 +173,17 @@ function buildEncodeFlags(encoder, preset) {
 function buildArgs(encoder, presetName, display = 0) {
   const preset = PRESETS[presetName] || PRESETS.balanced;
   const args = ['-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay'];
-
-  args.push(
-    '-f', 'lavfi',
-    '-i', `ddagrab=output_idx=${display}:framerate=${preset.fps}:draw_mouse=1`
-  );
-
-  if (preset.scale) {
-    args.push('-vf', `scale=${preset.scale}`);
-  }
-
+  args.push('-f', 'lavfi', '-i', `ddagrab=output_idx=${display}:framerate=${preset.fps}:draw_mouse=1`);
+  if (preset.scale) args.push('-vf', `scale=${preset.scale}`);
   args.push('-c:v', encoder.codec);
   args.push(...buildEncodeFlags(encoder, preset));
-
-  args.push(
-    '-pix_fmt', 'yuv420p',
-    '-an',
-    '-f', 'mpegts',
-    'pipe:1'
-  );
-
+  args.push('-pix_fmt', 'yuv420p', '-an', '-f', 'mpegts', 'pipe:1');
   return args;
 }
 
 function buildGdiArgs(encoder, presetName) {
   const preset = PRESETS[presetName] || PRESETS.balanced;
-  const args = [
-    '-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay',
-    '-f', 'gdigrab', '-framerate', String(preset.fps), '-draw_mouse', '1', '-i', 'desktop'
-  ];
+  const args = ['-hide_banner', '-loglevel', 'error', '-fflags', 'nobuffer', '-flags', 'low_delay', '-f', 'gdigrab', '-framerate', String(preset.fps), '-draw_mouse', '1', '-i', 'desktop'];
   if (preset.scale) args.push('-vf', `scale=${preset.scale}`);
   args.push('-c:v', encoder.codec);
   args.push(...buildEncodeFlags(encoder, preset));
@@ -251,26 +194,12 @@ function buildGdiArgs(encoder, presetName) {
 function startEncoder({ ffmpegPath, encoder, preset, display, onData, onExit, onError }) {
   const args = buildArgs(encoder, preset, display);
   console.log('[encoder]', encoder.name || encoder.codec, args.join(' '));
-
-  const proc = spawn(ffmpegPath, args, {
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-
+  const proc = spawn(ffmpegPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   proc.stdout.on('data', (chunk) => onData && onData(chunk));
-  proc.stderr.on('data', (d) => {
-    const msg = d.toString().trim();
-    if (msg) console.log('[ffmpeg]', msg);
-  });
+  proc.stderr.on('data', (d) => { const msg = d.toString().trim(); if (msg) console.log('[ffmpeg]', msg); });
   proc.on('exit', (code) => onExit && onExit(code));
   proc.on('error', (err) => onError && onError(err));
-
-  return {
-    proc,
-    stop() {
-      try { proc.kill('SIGTERM'); } catch (_) {}
-    }
-  };
+  return { proc, stop() { try { proc.kill('SIGTERM'); } catch (_) {} } };
 }
 
 function startEncoderGdi(opts) {
@@ -278,18 +207,10 @@ function startEncoderGdi(opts) {
   console.log('[encoder-gdi]', opts.encoder.name || opts.encoder.codec, args.join(' '));
   const proc = spawn(opts.ffmpegPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   proc.stdout.on('data', (chunk) => opts.onData && opts.onData(chunk));
-  proc.stderr.on('data', (d) => {
-    const m = d.toString().trim();
-    if (m) console.log('[ffmpeg]', m);
-  });
+  proc.stderr.on('data', (d) => { const m = d.toString().trim(); if (m) console.log('[ffmpeg]', m); });
   proc.on('exit', (code) => opts.onExit && opts.onExit(code));
   proc.on('error', (err) => opts.onError && opts.onError(err));
-  return {
-    proc,
-    stop() {
-      try { proc.kill('SIGTERM'); } catch (_) {}
-    }
-  };
+  return { proc, stop() { try { proc.kill('SIGTERM'); } catch (_) {} } };
 }
 
 module.exports = {
