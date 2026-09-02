@@ -12,7 +12,6 @@ const {
   detectEncoders,
   pickEncoder,
   startEncoder,
-  startEncoderGdi,
   PRESETS,
   CODEC_LABELS
 } = require('./encoder');
@@ -73,45 +72,19 @@ function startSessionEncoder(session, preset, codecPref) {
   session.activeEncoder = encoder;
   session.preset = preset || session.preset || 'balanced';
   session.codecPref = codecPref || session.codecPref || 'auto';
-  session._triedGdi = false;
-  session._triedH264 = false;
 
-  const common = {
+  console.log('[host] starting encode', encoder.name, 'preset', session.preset);
+  session.encoder = startEncoder({
     ffmpegPath,
     encoder,
     preset: session.preset,
     display: 0,
     onData: (chunk) => broadcastTs(session, chunk),
-    onExit: (code) => {
-      console.log('[encoder] exited', code);
-      if (!session._triedGdi) {
-        session._triedGdi = true;
-        console.log('[encoder] retrying with gdigrab…');
-        session.encoder = startEncoderGdi({
-          ...common,
-          encoder: session.activeEncoder,
-          onExit: (c) => {
-            console.log('[encoder-gdi] exited', c);
-            if (!session._triedH264 && session.activeEncoder && /av1|hevc/i.test(session.activeEncoder.codec)) {
-              session._triedH264 = true;
-              const h264 = pickEncoder(availableCodecs, 'h264');
-              console.log('[encoder] retrying gdigrab with', h264.name);
-              session.activeEncoder = h264;
-              session.encoder = startEncoderGdi({
-                ...common,
-                encoder: h264,
-                onExit: (c2) => console.log('[encoder-gdi-h264] exited', c2)
-              });
-            }
-          }
-        });
-      }
+    onExit: (code, signal, bytes) => {
+      console.log('[host] encode ended code=', code, 'bytes=', bytes || 0);
     },
     onError: (err) => console.error('[encoder]', err.message)
-  };
-
-  console.log('[host] starting encode', encoder.name, 'preset', session.preset);
-  session.encoder = startEncoder(common);
+  });
 }
 
 io.on('connection', (socket) => {
@@ -127,9 +100,7 @@ io.on('connection', (socket) => {
       encoder: null,
       activeEncoder: null,
       preset,
-      codecPref,
-      _triedGdi: false,
-      _triedH264: false
+      codecPref
     };
     sessions.set(code, session);
     socket.join(code);
