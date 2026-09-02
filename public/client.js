@@ -99,10 +99,7 @@ socket.on('viewer-joined', async ({ viewerId }) => {
       });
       localStream.getVideoTracks()[0].onended = () => cleanup();
     }
-    if (peer) {
-      try { peer.destroy(); } catch (_) {}
-      peer = null;
-    }
+    if (peer) { try { peer.destroy(); } catch (_) {} peer = null; }
     peer = new SimplePeer({
       initiator: true,
       stream: localStream,
@@ -129,14 +126,11 @@ socket.on('joined', (info) => {
   code = info.code;
   hwReady = !!info.hwReady;
   setStatus('Joined ' + code);
-
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const wantHw = !isIOS && pathMode === 'hw' && hwReady;
-  if (wantHw) {
-    activePath = 'hw';
-    startTsPlayer();
-  } else {
+  if (wantHw) { activePath = 'hw'; startTsPlayer(); }
+  else {
     activePath = 'webrtc';
     if (isIOS) setStatus('Joined ' + code + ' (WebRTC)');
     startWebrtcViewer();
@@ -152,6 +146,9 @@ socket.on('joined', (info) => {
 socket.on('encode-started', (info) => {
   setStatus('Encoding: ' + (info.encoder?.name || '') + ' / ' + info.preset);
 });
+socket.on('encode-updated', (info) => {
+  setStatus('Encode now: ' + (info.encoder?.name || info.codecPref || '') + ' / ' + (info.preset || ''));
+});
 
 function startTsPlayer() {
   setStatus('Hardware stream starting…');
@@ -161,30 +158,21 @@ function startTsPlayer() {
   let sb = null;
   let queue = [];
   mediaSource.addEventListener('sourceopen', () => {
-    try {
-      sb = mediaSource.addSourceBuffer('video/mp2t; codecs="avc1.64001f"');
-    } catch {
-      try {
-        sb = mediaSource.addSourceBuffer('video/mp2t');
-      } catch (e) {
-        setStatus('This browser cannot play live MPEG-TS — use Compat path');
-        return;
-      }
+    try { sb = mediaSource.addSourceBuffer('video/mp2t; codecs="avc1.64001f"'); }
+    catch {
+      try { sb = mediaSource.addSourceBuffer('video/mp2t'); }
+      catch (e) { setStatus('This browser cannot play live MPEG-TS — use Compat path'); return; }
     }
     sb.mode = 'sequence';
     sb.addEventListener('updateend', () => {
-      if (queue.length && !sb.updating) {
-        try { sb.appendBuffer(queue.shift()); } catch (_) {}
-      }
+      if (queue.length && !sb.updating) { try { sb.appendBuffer(queue.shift()); } catch (_) {} }
     });
   });
   socket.on('ts', (buf) => {
     const data = buf instanceof ArrayBuffer ? buf : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     if (!sb) return;
     if (sb.updating || queue.length) queue.push(data);
-    else {
-      try { sb.appendBuffer(data); } catch (_) { queue.push(data); }
-    }
+    else { try { sb.appendBuffer(data); } catch (_) { queue.push(data); } }
   });
 }
 
@@ -237,11 +225,7 @@ function enableInput() {
     if (e.touches.length > 1) return;
     const t = e.touches[0];
     lastTX = t.clientX; lastTY = t.clientY;
-    touching = true;
-    touchMoved = false;
-    touchStartAt = Date.now();
-    dragActive = false;
-
+    touching = true; touchMoved = false; touchStartAt = Date.now(); dragActive = false;
     if (inputMode === 'touchscreen') {
       sendAbs(t.clientX, t.clientY);
       sendInput({ type: 'mousedown', button: 0 });
@@ -249,8 +233,7 @@ function enableInput() {
     } else if (inputMode === 'touchpad-drag') {
       longT = setTimeout(() => {
         sendInput({ type: 'mousedown', button: 0 });
-        dragActive = true;
-        longT = null;
+        dragActive = true; longT = null;
       }, 200);
     } else {
       longT = setTimeout(() => {
@@ -267,14 +250,10 @@ function enableInput() {
     const dx = t.clientX - lastTX, dy = t.clientY - lastTY;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       touchMoved = true;
-      if (longT && inputMode !== 'touchpad-drag') {
-        clearTimeout(longT);
-        longT = null;
-      }
+      if (longT && inputMode !== 'touchpad-drag') { clearTimeout(longT); longT = null; }
     }
-    if (inputMode === 'touchscreen') {
-      sendAbs(t.clientX, t.clientY);
-    } else {
+    if (inputMode === 'touchscreen') sendAbs(t.clientX, t.clientY);
+    else {
       if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) sendRel(dx, dy);
       lastTX = t.clientX; lastTY = t.clientY;
     }
@@ -284,35 +263,21 @@ function enableInput() {
     e.preventDefault();
     const duration = Date.now() - touchStartAt;
     if (longT) { clearTimeout(longT); longT = null; }
-
     if (inputMode === 'touchscreen') {
-      sendInput({ type: 'mouseup', button: 0 });
-      dragActive = false;
+      sendInput({ type: 'mouseup', button: 0 }); dragActive = false;
     } else if (inputMode === 'touchpad-drag') {
-      if (dragActive) {
-        sendInput({ type: 'mouseup', button: 0 });
-        dragActive = false;
-      } else if (!touchMoved && duration < 250) {
-        sendInput({ type: 'click', button: 0 });
-      }
+      if (dragActive) { sendInput({ type: 'mouseup', button: 0 }); dragActive = false; }
+      else if (!touchMoved && duration < 250) sendInput({ type: 'click', button: 0 });
     } else {
-      // touchpad: only click on short taps with little movement
-      if (!touchMoved && duration < 350) {
-        sendInput({ type: 'click', button: 0 });
-      }
+      if (!touchMoved && duration < 350) sendInput({ type: 'click', button: 0 });
     }
-    touching = false;
-    touchMoved = false;
+    touching = false; touchMoved = false;
   }, { passive: false });
 
   vid.addEventListener('touchcancel', () => {
     if (longT) { clearTimeout(longT); longT = null; }
-    if (dragActive) {
-      sendInput({ type: 'mouseup', button: 0 });
-      dragActive = false;
-    }
-    touching = false;
-    touchMoved = false;
+    if (dragActive) { sendInput({ type: 'mouseup', button: 0 }); dragActive = false; }
+    touching = false; touchMoved = false;
   }, { passive: false });
 
   let pinchY = null;
@@ -353,11 +318,7 @@ function startGamepad() {
       const snap = pad.buttons.map((b) => b.pressed).join('') + pad.axes.map((a) => a.toFixed(2)).join(',');
       if (snap !== last) {
         last = snap;
-        sendInput({
-          type: 'gamepad',
-          buttons: pad.buttons.map((b) => ({ pressed: b.pressed, value: b.value })),
-          axes: Array.from(pad.axes)
-        });
+        sendInput({ type: 'gamepad', buttons: pad.buttons.map((b) => ({ pressed: b.pressed, value: b.value })), axes: Array.from(pad.axes) });
       }
       break;
     }
@@ -370,10 +331,15 @@ async function requestWakeLock() {
   try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
 }
 
+const settingsPanel = $('settingsPanel');
 function resetHud() {
   hud.classList.remove('dim');
   clearTimeout(hideT);
-  hideT = setTimeout(() => { if (!vkb.classList.contains('on')) hud.classList.add('dim'); }, 3200);
+  hideT = setTimeout(() => {
+    if (vkb.classList.contains('on')) return;
+    if (settingsPanel && settingsPanel.classList.contains('on')) return;
+    hud.classList.add('dim');
+  }, 3200);
 }
 stage.addEventListener('touchstart', resetHud, { passive: true });
 
@@ -386,6 +352,61 @@ $('btnStats').onclick = () => {
   statsOn = !statsOn;
   statsEl.style.display = statsOn ? 'block' : 'none';
 };
+
+function syncLiveSettingsUI() {
+  if ($('liveInputMode')) $('liveInputMode').value = inputMode;
+  if ($('liveSens')) {
+    $('liveSens').value = sens;
+    if ($('liveSensVal')) $('liveSensVal').textContent = sens.toFixed(1) + 'x';
+  }
+  if ($('livePerf')) $('livePerf').value = perfMode;
+  if ($('liveCodec')) $('liveCodec').value = codecMode;
+}
+if ($('btnSettings')) {
+  $('btnSettings').onclick = () => {
+    syncLiveSettingsUI();
+    if (settingsPanel) settingsPanel.classList.toggle('on');
+    resetHud();
+  };
+}
+if ($('btnCloseSettings')) {
+  $('btnCloseSettings').onclick = () => { if (settingsPanel) settingsPanel.classList.remove('on'); };
+}
+if ($('liveInputMode')) {
+  $('liveInputMode').onchange = (e) => {
+    inputMode = e.target.value;
+    localStorage.setItem('cf-mode', inputMode);
+    if ($('inputMode')) $('inputMode').value = inputMode;
+    setStatus('Control: ' + inputMode);
+  };
+}
+if ($('liveSens')) {
+  $('liveSens').oninput = (e) => {
+    sens = parseFloat(e.target.value);
+    if ($('liveSensVal')) $('liveSensVal').textContent = sens.toFixed(1) + 'x';
+    if ($('sens')) $('sens').value = sens;
+    if ($('sensVal')) $('sensVal').textContent = sens.toFixed(1) + 'x';
+    localStorage.setItem('cf-sens', sens);
+  };
+}
+if ($('btnApplyEncode')) {
+  $('btnApplyEncode').onclick = () => {
+    if ($('livePerf')) {
+      perfMode = $('livePerf').value;
+      localStorage.setItem('cf-perf', perfMode);
+      if ($('perfMode')) $('perfMode').value = perfMode;
+    }
+    if ($('liveCodec')) {
+      codecMode = $('liveCodec').value;
+      localStorage.setItem('cf-codec', codecMode);
+      if ($('codecMode')) $('codecMode').value = codecMode;
+    }
+    socket.emit('update-encode', { preset: perfMode, codec: codecMode });
+    setStatus('Requested encode: ' + codecMode + ' / ' + perfMode);
+    if (settingsPanel) settingsPanel.classList.remove('on');
+  };
+}
+
 $('btnExit').onclick = () => cleanup(true);
 
 setInterval(() => {
@@ -400,8 +421,5 @@ function cleanup(reload) {
   if (tsPlayer) try { tsPlayer.destroy(); } catch (_) {}
   peer = null; localStream = null;
   if (reload) location.reload();
-  else {
-    stage.style.display = 'none';
-    setup.classList.remove('hidden');
-  }
+  else { stage.style.display = 'none'; setup.classList.remove('hidden'); }
 }
