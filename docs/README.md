@@ -3,7 +3,8 @@
 In-depth guides, step-by-step setup, troubleshooting, FAQ, and tips.
 
 **Repo:** [github.com/IornMan1213/couchforge](https://github.com/IornMan1213/couchforge)  
-**Port:** `3090` (default)
+**Port:** `3090` (default)  
+**Changelog:** [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -18,9 +19,9 @@ In-depth guides, step-by-step setup, troubleshooting, FAQ, and tips.
 | [5. Controls](05-controls.md) | Touchpad, hold-to-drag, touchscreen, keyboard, scroll |
 | [6. Paths and Codecs](06-paths-and-codecs.md) | Auto / Hardware / Compat, H.264 / AV1 / HEVC |
 | [7. Networking (Tailscale)](07-networking.md) | IPs, firewall, LAN vs Tailscale |
-| [8. Troubleshooting](08-troubleshooting.md) | No video, no click, encoder errors, step-by-step fixes |
+| [8. Troubleshooting](08-troubleshooting.md) | No video, encoder errors, input, deep dives |
 | [9. FAQ](09-faq.md) | Common questions |
-| [10. Tips and Best Practices](10-tips.md) | Latency, YouTube-from-couch, battery, quality |
+| [10. Tips and Best Practices](10-tips.md) | Latency, YouTube-from-couch, quality |
 | [Architecture](ARCHITECTURE.md) | How the stack is built |
 
 ---
@@ -33,10 +34,19 @@ In-depth guides, step-by-step setup, troubleshooting, FAQ, and tips.
 | Every touch clicks | [Controls](05-controls.md) |
 | FFmpeg / encoder errors | [Encoder fails](08-troubleshooting.md#encoder-fails-or-exits) |
 | Cannot open from phone | [Networking](07-networking.md) |
-| iPhone Safari issues | [iPhone viewer](04-iphone-viewer.md) |
+| Want AV1 / drag without reconnect | HUD **Settings** while streaming |
 
----
+## Live settings (no reconnect)
+
+While streaming, open **Settings** on the HUD to change Control, Speed, Quality, and Codec without leaving the session.
+
+## GitHub Wiki
+
+Canonical docs are versioned here in `docs/`.
+
+- https://github.com/IornMan1213/couchforge/wiki  
+- Enable **Settings → Features → Wikis** if empty, then mirror these pages into the Wiki, or use this folder as the source of truth.
 
 ## Related project
 
-[Couch Share](https://github.com/IornMan1213/couch-share) — lighter WebRTC-only tool (port 3080). CouchForge is the hardware-encode / gaming-oriented successor.
+[Couch Share](https://github.com/IornMan1213/couch-share) — lighter WebRTC-only tool (port 3080).
