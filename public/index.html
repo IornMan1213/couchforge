@@ -7,28 +7,14 @@
   <style>
     :root { --bg:#0f1115; --card:#1a1d24; --accent:#22c55e; --text:#e5e7eb; --muted:#9ca3af; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text); min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center; padding: 1rem;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 1rem; }
     h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
     .sub { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.85rem; text-align: center; }
-    .card {
-      background: var(--card); border-radius: 12px; padding: 1.25rem;
-      width: 100%; max-width: 440px; box-shadow: 0 4px 20px rgba(0,0,0,.35);
-    }
-    button {
-      background: var(--accent); color: #052e16; border: none; border-radius: 8px;
-      padding: 0.7rem 1.1rem; font-size: 1rem; font-weight: 700; cursor: pointer;
-      width: 100%; margin-top: 0.65rem;
-    }
+    .card { background: var(--card); border-radius: 12px; padding: 1.25rem; width: 100%; max-width: 440px; box-shadow: 0 4px 20px rgba(0,0,0,.35); }
+    button { background: var(--accent); color: #052e16; border: none; border-radius: 8px; padding: 0.7rem 1.1rem; font-size: 1rem; font-weight: 700; cursor: pointer; width: 100%; margin-top: 0.65rem; }
     button.secondary { background: #374151; color: var(--text); font-weight: 600; }
     button.small { width: auto; padding: 0.35rem 0.7rem; font-size: 0.8rem; margin-top: 0; }
-    input, select {
-      width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #374151;
-      background: #111; color: var(--text); font-size: 1.05rem; text-align: center;
-    }
+    input, select { width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #374151; background: #111; color: var(--text); font-size: 1.05rem; text-align: center; }
     input.code { letter-spacing: .15em; text-transform: uppercase; }
     #codeDisplay { font-size: 1.8rem; font-weight: 700; letter-spacing: .2em; text-align: center; margin: .75rem 0; color: #4ade80; }
     #status, #connStatus { margin-top: .5rem; font-size: .8rem; color: var(--muted); text-align: center; }
@@ -39,36 +25,28 @@
     .hidden { display: none !important; }
     #stage { display: none; position: fixed; inset: 0; background: #000; z-index: 50; }
     #stage video { width: 100%; height: 100%; object-fit: contain; background: #000; touch-action: none; }
-    #hud {
-      position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
-      display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; max-width: 96%; z-index: 60;
-      transition: opacity .3s;
-    }
+    #hud { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; max-width: 96%; z-index: 60; transition: opacity .3s; }
     #hud.dim { opacity: 0; pointer-events: none; }
     #hud button { width: auto; padding: .45rem .75rem; font-size: .8rem; }
-    #stats {
-      position: absolute; top: .5rem; left: .5rem; background: rgba(0,0,0,.55);
-      color: #a3a3a3; font: .7rem monospace; padding: .25rem .5rem; border-radius: 6px; display: none; z-index: 70;
-    }
-    #vkb {
-      display: none; position: absolute; bottom: 3.5rem; left: 50%; transform: translateX(-50%);
-      width: 96%; max-width: 480px; background: rgba(26,29,36,.96); border-radius: 10px;
-      padding: .4rem; z-index: 80; flex-direction: column; gap: .25rem;
-    }
+    #stats { position: absolute; top: .5rem; left: .5rem; background: rgba(0,0,0,.55); color: #a3a3a3; font: .7rem monospace; padding: .25rem .5rem; border-radius: 6px; display: none; z-index: 70; }
+    #vkb { display: none; position: absolute; bottom: 3.5rem; left: 50%; transform: translateX(-50%); width: 96%; max-width: 480px; background: rgba(26,29,36,.96); border-radius: 10px; padding: .4rem; z-index: 80; flex-direction: column; gap: .25rem; }
     #vkb.on { display: flex; }
     .kb-row { display: flex; gap: .2rem; justify-content: center; }
-    .kb-key {
-      flex: 1; min-width: 1.5rem; max-width: 2.8rem; padding: .5rem 0; font-size: .75rem;
-      background: #374151; border: none; border-radius: 5px; color: #fff; margin: 0;
-    }
+    .kb-key { flex: 1; min-width: 1.5rem; max-width: 2.8rem; padding: .5rem 0; font-size: .75rem; background: #374151; border: none; border-radius: 5px; color: #fff; margin: 0; }
     .kb-key.wide { max-width: 4.5rem; flex: 1.4; }
     .kb-key.space { max-width: none; flex: 4; }
+    #settingsPanel { display: none; position: absolute; top: 2.5rem; right: .5rem; width: min(92vw, 320px); background: rgba(26,29,36,.96); border-radius: 12px; padding: .75rem; z-index: 85; border: 1px solid #374151; max-height: 70vh; overflow-y: auto; }
+    #settingsPanel.on { display: block; }
+    #settingsPanel h3 { font-size: .9rem; margin-bottom: .5rem; color: #86efac; }
+    #settingsPanel .row { margin-top: .45rem; }
+    #settingsPanel label { min-width: 4.5rem; font-size: .8rem; }
+    #settingsPanel select, #settingsPanel input[type=range] { font-size: .85rem; padding: .4rem; }
+    #settingsPanel .hint { margin-top: .5rem; text-align: left; }
   </style>
 </head>
 <body>
   <h1>CouchForge</h1>
   <p class="sub">Hardware-accelerated local stream · Tailscale-ready</p>
-
   <div class="card" id="setup">
     <button id="btnHost">Start Host (PC)</button>
     <div id="hostInfo" class="hidden">
@@ -79,107 +57,46 @@
       </div>
       <p id="encInfo" class="hint"></p>
     </div>
-
     <hr style="border:none;border-top:1px solid #333;margin:1.1rem 0;" />
-
     <p style="text-align:center;margin-bottom:.4rem;">Join</p>
     <input id="joinCode" class="code" maxlength="6" placeholder="CODE" autocomplete="off" />
     <button id="btnJoin" class="secondary">Join Session</button>
-
-    <div class="row" style="margin-top:1rem;">
-      <label>Path</label>
-      <select id="pathMode">
-        <option value="auto" selected>Auto</option>
-        <option value="hw">Hardware (FFmpeg)</option>
-        <option value="webrtc">Compat (WebRTC)</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>Quality</label>
-      <select id="perfMode">
-        <option value="latency">Low latency</option>
-        <option value="balanced" selected>Balanced</option>
-        <option value="quality">High quality</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>Codec</label>
-      <select id="codecMode">
-        <option value="auto" selected>Auto (prefer H.264 for browser)</option>
-        <option value="av1">AV1</option>
-        <option value="hevc">HEVC</option>
-        <option value="h264">H.264</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>Control</label>
-      <select id="inputMode">
-        <option value="touchpad" selected>Touchpad (tap to click)</option>
-        <option value="touchpad-drag">Touchpad (hold to drag)</option>
-        <option value="touchscreen">Touchscreen</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>Speed</label>
-      <input type="range" id="sens" min="0.5" max="3" step="0.1" value="1.5" />
-      <span id="sensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span>
-    </div>
-    <p class="hint">Tap to click moves the cursor without clicking. Use hold-to-drag when you need click+drag. On iPhone use Path → Compat if needed.</p>
-
-    <div id="status">Ready</div>
-    <div id="connStatus">…</div>
+    <div class="row" style="margin-top:1rem;"><label>Path</label><select id="pathMode"><option value="auto" selected>Auto</option><option value="hw">Hardware (FFmpeg)</option><option value="webrtc">Compat (WebRTC)</option></select></div>
+    <div class="row"><label>Quality</label><select id="perfMode"><option value="latency">Low latency</option><option value="balanced" selected>Balanced</option><option value="quality">High quality</option></select></div>
+    <div class="row"><label>Codec</label><select id="codecMode"><option value="auto" selected>Auto (prefer H.264)</option><option value="av1">AV1</option><option value="hevc">HEVC</option><option value="h264">H.264</option></select></div>
+    <div class="row"><label>Control</label><select id="inputMode"><option value="touchpad" selected>Touchpad (tap to click)</option><option value="touchpad-drag">Touchpad (hold to drag)</option><option value="touchscreen">Touchscreen</option></select></div>
+    <div class="row"><label>Speed</label><input type="range" id="sens" min="0.5" max="3" step="0.1" value="1.5" /><span id="sensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span></div>
+    <p class="hint">While streaming use HUD Settings to change control/codec without reconnecting.</p>
+    <div id="status">Ready</div><div id="connStatus">…</div>
   </div>
-
   <div id="stage">
     <div id="stats"></div>
     <video id="vid" autoplay playsinline muted></video>
     <div id="vkb">
-      <div class="kb-row">
-        <button class="kb-key" data-key="Escape">Esc</button>
-        <button class="kb-key" data-key="Tab">Tab</button>
-        <button class="kb-key" data-key="Backspace">⌫</button>
-        <button class="kb-key" data-key="Enter">↵</button>
-      </div>
-      <div class="kb-row">
-        <button class="kb-key" data-key="q">q</button><button class="kb-key" data-key="w">w</button>
-        <button class="kb-key" data-key="e">e</button><button class="kb-key" data-key="r">r</button>
-        <button class="kb-key" data-key="t">t</button><button class="kb-key" data-key="y">y</button>
-        <button class="kb-key" data-key="u">u</button><button class="kb-key" data-key="i">i</button>
-        <button class="kb-key" data-key="o">o</button><button class="kb-key" data-key="p">p</button>
-      </div>
-      <div class="kb-row">
-        <button class="kb-key" data-key="a">a</button><button class="kb-key" data-key="s">s</button>
-        <button class="kb-key" data-key="d">d</button><button class="kb-key" data-key="f">f</button>
-        <button class="kb-key" data-key="g">g</button><button class="kb-key" data-key="h">h</button>
-        <button class="kb-key" data-key="j">j</button><button class="kb-key" data-key="k">k</button>
-        <button class="kb-key" data-key="l">l</button>
-      </div>
-      <div class="kb-row">
-        <button class="kb-key wide" data-key="Shift">⇧</button>
-        <button class="kb-key" data-key="z">z</button><button class="kb-key" data-key="x">x</button>
-        <button class="kb-key" data-key="c">c</button><button class="kb-key" data-key="v">v</button>
-        <button class="kb-key" data-key="b">b</button><button class="kb-key" data-key="n">n</button>
-        <button class="kb-key" data-key="m">m</button>
-        <button class="kb-key wide" data-key="Backspace">⌫</button>
-      </div>
-      <div class="kb-row">
-        <button class="kb-key" data-key="Control">Ctrl</button>
-        <button class="kb-key" data-key="Alt">Alt</button>
-        <button class="kb-key space" data-key=" ">space</button>
-        <button class="kb-key" data-key="ArrowLeft">←</button>
-        <button class="kb-key" data-key="ArrowUp">↑</button>
-        <button class="kb-key" data-key="ArrowDown">↓</button>
-        <button class="kb-key" data-key="ArrowRight">→</button>
-      </div>
+      <div class="kb-row"><button class="kb-key" data-key="Escape">Esc</button><button class="kb-key" data-key="Tab">Tab</button><button class="kb-key" data-key="Backspace">⌫</button><button class="kb-key" data-key="Enter">↵</button></div>
+      <div class="kb-row"><button class="kb-key" data-key="q">q</button><button class="kb-key" data-key="w">w</button><button class="kb-key" data-key="e">e</button><button class="kb-key" data-key="r">r</button><button class="kb-key" data-key="t">t</button><button class="kb-key" data-key="y">y</button><button class="kb-key" data-key="u">u</button><button class="kb-key" data-key="i">i</button><button class="kb-key" data-key="o">o</button><button class="kb-key" data-key="p">p</button></div>
+      <div class="kb-row"><button class="kb-key" data-key="a">a</button><button class="kb-key" data-key="s">s</button><button class="kb-key" data-key="d">d</button><button class="kb-key" data-key="f">f</button><button class="kb-key" data-key="g">g</button><button class="kb-key" data-key="h">h</button><button class="kb-key" data-key="j">j</button><button class="kb-key" data-key="k">k</button><button class="kb-key" data-key="l">l</button></div>
+      <div class="kb-row"><button class="kb-key wide" data-key="Shift">⇧</button><button class="kb-key" data-key="z">z</button><button class="kb-key" data-key="x">x</button><button class="kb-key" data-key="c">c</button><button class="kb-key" data-key="v">v</button><button class="kb-key" data-key="b">b</button><button class="kb-key" data-key="n">n</button><button class="kb-key" data-key="m">m</button><button class="kb-key wide" data-key="Backspace">⌫</button></div>
+      <div class="kb-row"><button class="kb-key" data-key="Control">Ctrl</button><button class="kb-key" data-key="Alt">Alt</button><button class="kb-key space" data-key=" ">space</button><button class="kb-key" data-key="ArrowLeft">←</button><button class="kb-key" data-key="ArrowUp">↑</button><button class="kb-key" data-key="ArrowDown">↓</button><button class="kb-key" data-key="ArrowRight">→</button></div>
+    </div>
+    <div id="settingsPanel">
+      <h3>Live settings</h3>
+      <div class="row"><label>Control</label><select id="liveInputMode"><option value="touchpad">Touchpad (tap)</option><option value="touchpad-drag">Touchpad (drag)</option><option value="touchscreen">Touchscreen</option></select></div>
+      <div class="row"><label>Speed</label><input type="range" id="liveSens" min="0.5" max="3" step="0.1" value="1.5" /><span id="liveSensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span></div>
+      <div class="row"><label>Quality</label><select id="livePerf"><option value="latency">Low latency</option><option value="balanced">Balanced</option><option value="quality">High quality</option></select></div>
+      <div class="row"><label>Codec</label><select id="liveCodec"><option value="auto">Auto</option><option value="h264">H.264</option><option value="hevc">HEVC</option><option value="av1">AV1</option></select></div>
+      <p class="hint">Control & speed apply instantly. Quality/codec: tap Apply encode (no reconnect).</p>
+      <button id="btnApplyEncode" class="secondary" style="margin-top:.5rem;">Apply encode</button>
+      <button id="btnCloseSettings" class="secondary" style="margin-top:.35rem;">Close</button>
     </div>
     <div id="hud">
       <button id="btnFs">Fullscreen</button>
       <button id="btnKb">Keyboard</button>
+      <button id="btnSettings">Settings</button>
       <button id="btnStats">Stats</button>
       <button id="btnExit" class="secondary">Exit</button>
     </div>
   </div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
