@@ -21,6 +21,7 @@ let code = null;
 let inputMode = localStorage.getItem('cf-mode') || 'touchpad';
 let perfMode = localStorage.getItem('cf-perf') || 'balanced';
 let pathMode = localStorage.getItem('cf-path') || 'auto';
+let codecMode = localStorage.getItem('cf-codec') || 'auto';
 let sens = parseFloat(localStorage.getItem('cf-sens') || '1.5');
 let lastTX = 0, lastTY = 0, touching = false, longT = null;
 let wakeLock = null, hideT = null, statsOn = false, lastRtt = 0, pingT = 0;
@@ -32,12 +33,14 @@ function setConn(t, c = '#9ca3af') { connEl.textContent = t; connEl.style.color 
 $('inputMode').value = inputMode;
 $('perfMode').value = perfMode;
 $('pathMode').value = pathMode;
+if ($('codecMode')) $('codecMode').value = codecMode;
 $('sens').value = sens;
 $('sensVal').textContent = sens.toFixed(1) + 'x';
 
 $('inputMode').onchange = (e) => { inputMode = e.target.value; localStorage.setItem('cf-mode', inputMode); };
 $('perfMode').onchange = (e) => { perfMode = e.target.value; localStorage.setItem('cf-perf', perfMode); };
 $('pathMode').onchange = (e) => { pathMode = e.target.value; localStorage.setItem('cf-path', pathMode); };
+if ($('codecMode')) $('codecMode').onchange = (e) => { codecMode = e.target.value; localStorage.setItem('cf-codec', codecMode); };
 $('sens').oninput = (e) => {
   sens = parseFloat(e.target.value);
   $('sensVal').textContent = sens.toFixed(1) + 'x';
@@ -61,7 +64,7 @@ $('btnHost').onclick = async () => {
       return;
     }
   }
-  socket.emit('create-session', { preset: perfMode });
+  socket.emit('create-session', { preset: perfMode, codec: codecMode });
 };
 
 socket.on('session-created', (info) => {
@@ -69,13 +72,14 @@ socket.on('session-created', (info) => {
   codeDisplay.textContent = code;
   hostInfo.classList.remove('hidden');
   const enc = info.encoder ? `${info.encoder.name}` : 'no HW encoder detected';
+  const av1 = (info.availableCodecs || []).some((x) => /av1/i.test(x.id || x));
   encInfo.textContent = info.ffmpeg
-    ? `FFmpeg ready · ${enc}`
+    ? `FFmpeg ready · ${enc}` + (av1 ? ' · AV1 available' : '')
     : 'FFmpeg not found — use Compat path or install FFmpeg';
   setStatus('Session ' + code);
   setConn('Waiting for viewer…', '#fbbf24');
   if (pathMode !== 'webrtc' && info.ffmpeg) {
-    socket.emit('start-encode', { preset: perfMode });
+    socket.emit('start-encode', { preset: perfMode, codec: codecMode });
   }
 });
 
@@ -320,7 +324,7 @@ $('btnExit').onclick = () => cleanup(true);
 
 setInterval(() => {
   if (!statsOn) return;
-  statsEl.textContent = `RTT ~${lastRtt}ms · ${activePath || '-'} · ${perfMode} · ${inputMode}`;
+  statsEl.textContent = `RTT ~${lastRtt}ms · ${activePath || '-'} · ${perfMode} · ${codecMode} · ${inputMode}`;
 }, 800);
 
 function cleanup(reload) {
