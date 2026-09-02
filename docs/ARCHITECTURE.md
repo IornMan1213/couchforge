@@ -1,61 +1,61 @@
-# CouchForge Architecture
+# Architecture
 
 ## Goal
 
-A from-scratch, self-hosted streamer aimed at Sunshine/Steam Link territory:
+Self-hosted streamer aimed at Sunshine/Steam Link territory:
 
-- Hardware encode on the host (**AV1** / HEVC / H.264 via NVENC, AMF, Quick Sync)
-- Low-latency capture (DXGI Desktop Duplication via FFmpeg `ddagrab` when available)
+- Hardware encode on the host (NVENC / AMF / Quick Sync via FFmpeg)
+- Low-latency capture (`gdigrab` preferred on Windows; `ddagrab` with hwdownload fallback)
 - Touchpad / touchscreen / keyboard / gamepad control
-- Tailscale-friendly (no port forwarding)
-- Browser client on iPhone (Safari) + desktop browsers
+- Tailscale-friendly (bind `0.0.0.0`, no port forwarding required)
+- Browser client on iPhone (Safari via WebRTC) + desktop browsers
 
-## Honest status (v0.1)
+## Status (v0.1)
 
 | Layer | Status | Notes |
 |-------|--------|--------|
-| Capture | FFmpeg `ddagrab` / `gdigrab` | Real DXGI path when FFmpeg build supports it |
-| Encode | **AV1** / HEVC / H.264 (NVENC, AMF, QSV) + software | Auto prefers AV1; low-latency flags |
-| Transport | MPEG-TS over WebSocket + WebRTC fallback | HW path uses TS; compat mode uses WebRTC |
-| Decode (client) | MSE / mpegts.js + WebRTC | Safari prefers WebRTC compat mode |
+| Capture | FFmpeg `gdigrab` / `ddagrab` | gdigrab-first; ddagrab needs hwdownload |
+| Encode | H.264 / HEVC / AV1 (NVENC, AMF, QSV) + libx264 | Auto prefers H.264 for browsers |
+| Transport | MPEG-TS over Socket.IO + WebRTC | iOS uses WebRTC only |
+| Decode | MSE (desktop) / WebRTC (iPhone) | Safari cannot play live MPEG-TS reliably |
 | Mouse/KB | robotjs | Optional native module |
-| Gamepad | Browser Gamepad API → key mapping | ViGEm virtual pad is a later milestone |
-| Audio | Optional later | Desktop audio capture via dshow/wasapi |
+| Gamepad | Gamepad API → key map | ViGEm later |
+| Audio | Not streamed | Stays on PC devices |
 
-This is a **foundation**, not feature-parity with Sunshine.
+## Pipelines
 
-## Pipeline (performance mode)
+### Hardware
 
-```
-Desktop → ddagrab/gdigrab → av1|hevc|h264 (GPU) → MPEG-TS → Socket.IO → MSE → <video>
-                ↑
-         input events (Socket.IO) → robotjs / gamepad map
+```text
+Desktop → gdigrab/ddagrab → h264_nvenc (etc.) → MPEG-TS → Socket.IO → MSE → <video>
 ```
 
-## Pipeline (compat mode)
+### Compat (required for iPhone)
 
+```text
+getDisplayMedia → WebRTC (simple-peer) → Safari/Chrome
+Input: touch/keyboard → Socket.IO → robotjs
 ```
-Browser getDisplayMedia → WebRTC (simple-peer) → Safari/Chrome
+
+## Encoder fallback
+
+1. gdigrab + chosen codec
+2. ddagrab + chosen codec
+3. gdigrab + libx264
+
+## Roadmap
+
+1. Native DXGI + NVENC service (drop FFmpeg process)
+2. ViGEm virtual Xbox controller
+3. Optional desktop audio + sync
+4. Stronger live transport (custom UDP / WHEP)
+5. Optional Moonlight-oriented compatibility
+
+## Repo layout
+
+```text
+host/           Node server, encoder, input
+public/         Browser UI + client.js
+scripts/        ensure-ffmpeg.js
+docs/           This wiki
 ```
-
-## AV1 notes
-
-- Host detects `av1_nvenc`, `av1_amf`, `av1_qsv`, `libsvtav1`, `libaom-av1`.
-- Auto codec order: AV1 HW → HEVC HW → H.264 HW → software AV1 → x264.
-- Bitrate presets use lower rates for AV1 at similar visual quality.
-- MPEG-TS + MSE AV1 playback is not universal in every browser; WebRTC compat remains the safe path for iOS Safari until a WebCodecs/fMP4 path is added.
-
-## Roadmap toward Sunshine-class
-
-1. Native DXGI + NVENC/AV1 C++/C# capture service (replace FFmpeg process)
-2. True virtual Xbox pad via ViGEmBus
-3. Opus audio + sync
-4. Optional Moonlight protocol compatibility
-5. FEC / custom UDP for lossy Wi-Fi
-
-## Host requirements
-
-- Windows 10/11
-- Node.js 18+
-- FFmpeg in PATH (builds with nvenc/amf/qsv and optionally av1_* encoders)
-- Optional: `npm install robotjs` for input injection

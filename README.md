@@ -1,90 +1,75 @@
 # CouchForge
 
-From-scratch **local game/desktop streamer** with a **hardware encode path** (AV1 / HEVC / H.264 via NVENC, AMF, QSV) and the control features from Couch Share.
+From-scratch **local game/desktop streamer** with hardware encode (FFmpeg NVENC/AMF/QSV) and browser control from your phone — Tailscale-friendly.
 
-Sunshine-inspired foundation — not a drop-in Sunshine replacement yet, but a real starting point you can grow.
+Inspired by Sunshine / Steam Link goals. Not a drop-in Sunshine replacement yet; a foundation you can run today and extend.
 
-## What you get (v0.1)
+---
 
-- **Hardware encode path**: FFmpeg `ddagrab` (DXGI) or `gdigrab` → **AV1** / HEVC / H.264 (NVENC, AMF, QSV) with software fallbacks
-- **Automatic FFmpeg download** on `npm install` (Windows/Linux portable build into `tools/ffmpeg`)
-- **Low-latency presets**: Low latency · Balanced · High quality
-- **Codec preference**: Auto (prefer AV1) · AV1 · HEVC · H.264
-- **Compat path**: WebRTC (works better on iPhone Safari)
-- **Touchpad / touchscreen** control
-- **Virtual keyboard**, long-press right-click, two-finger scroll
-- **Gamepad** → keyboard mapping on the host
-- **Tailscale-friendly** (bind `0.0.0.0`, join by Tailscale IP)
-- Session codes, stats, wake lock, reconnection
+## Wiki (start here for problems)
 
-## Requirements (host PC)
+**Full documentation, step-by-step guides, FAQ, and troubleshooting:**
 
-- Windows 10/11
-- Node.js 18+
-- **FFmpeg** — downloaded automatically on `npm install` into `tools/ffmpeg` (or use a system install on PATH)
-  - Builds include NVENC/AMF/QSV when your GPU/drivers support them
-- Optional: `npm install robotjs` for mouse/keyboard injection
+### [CouchForge Wiki](docs/README.md)
+
+| Topic | Link |
+|-------|------|
+| Getting started | [docs/01-getting-started.md](docs/01-getting-started.md) |
+| Installation | [docs/02-installation.md](docs/02-installation.md) |
+| Host PC setup | [docs/03-host-setup.md](docs/03-host-setup.md) |
+| iPhone / viewer | [docs/04-iphone-viewer.md](docs/04-iphone-viewer.md) |
+| Controls (tap vs drag) | [docs/05-controls.md](docs/05-controls.md) |
+| Paths and codecs | [docs/06-paths-and-codecs.md](docs/06-paths-and-codecs.md) |
+| Tailscale / network | [docs/07-networking.md](docs/07-networking.md) |
+| Troubleshooting | [docs/08-troubleshooting.md](docs/08-troubleshooting.md) |
+| FAQ | [docs/09-faq.md](docs/09-faq.md) |
+| Tips | [docs/10-tips.md](docs/10-tips.md) |
+| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+
+---
 
 ## Quick start
 
-```bash
+```bat
 git clone https://github.com/IornMan1213/couchforge.git
 cd couchforge
 npm install
-# postinstall downloads a portable FFmpeg into tools/ffmpeg (Windows/Linux)
-npm install robotjs   # recommended on Windows for mouse/keyboard
+npm install robotjs
 npm start
 ```
 
-If FFmpeg did not download (offline install, etc.):
+1. PC Chrome: `http://localhost:3090` → **Start Host** → copy code
+2. When the phone joins, **Allow screen share** on the PC
+3. iPhone Safari: `http://<tailscale-ip>:3090` → enter code → **Join**
 
-```bash
-npm run ensure-ffmpeg
-```
+**iPhone:** video uses **WebRTC** (Safari cannot play the Hardware MPEG-TS path).  
+**Control:** **Touchpad (tap to click)** — move without clicking; short tap to click; use **hold to drag** when you need click-drag.
 
-Open `http://localhost:3090` on the PC → **Start Host**.
+Default port: **3090**.
 
-On iPhone (Tailscale connected): open `http://<tailscale-ip>:3090` → enter code → Join.
+---
 
-- Prefer **Compat (WebRTC)** on iPhone if the hardware MPEG-TS path does not play.
-- Prefer **Hardware** on desktop Chrome when FFmpeg + your GPU encoder are working.
+## Features (v0.1)
 
-### Codecs
+- Hardware encode path: FFmpeg `gdigrab` / `ddagrab` → H.264 / HEVC / AV1 (NVENC, AMF, QSV) with fallbacks
+- Auto FFmpeg detect/download on install (`npm run ensure-ffmpeg`)
+- Compat path: WebRTC for iPhone Safari
+- Touchpad (tap to click), hold-to-drag, touchscreen
+- Virtual keyboard, two-finger scroll, long-press right-click
+- Gamepad → key mapping (basic)
+- Tailscale-friendly (`0.0.0.0` bind)
+- Session codes, stats, wake lock
 
-| Preference | What is used |
-|------------|----------------|
-| **Auto** | Prefers **AV1** (nvenc/amf/qsv), then HEVC, then H.264 |
-| **AV1** | Force AV1 when FFmpeg reports `av1_nvenc`, `av1_amf`, `av1_qsv`, or software SVT/libaom |
-| **HEVC** | `hevc_nvenc` / `hevc_amf` / `hevc_qsv` |
-| **H.264** | `h264_nvenc` / `h264_amf` / `h264_qsv` / `libx264` |
+## Requirements
 
-AV1 needs a recent GPU (e.g. RTX 40-series NVENC AV1, recent AMD/Intel) and an FFmpeg build with those encoders. Browser decode of live AV1 MPEG-TS is limited on some clients — use **Compat (WebRTC)** on iPhone if the HW path fails.
+- Windows 10/11, Node.js 18+
+- FFmpeg optional for Compat; recommended for Hardware path
+- `robotjs` for mouse/keyboard injection
 
-## Paths
+## Related
 
-| Path | Encode | Best on |
-|------|--------|---------|
-| Hardware | FFmpeg GPU (or software) → MPEG-TS over Socket.IO | Desktop browsers with MSE |
-| Compat | Browser `getDisplayMedia` → WebRTC | iPhone Safari, easy setup |
-| Auto | Chooses HW when available (skips HW on iOS) | Default |
-
-## Architecture
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Roadmap (toward Sunshine-class)
-
-1. Native DXGI + NVENC/AV1 service (no FFmpeg process)
-2. ViGEm virtual Xbox controller
-3. Desktop audio capture + sync
-4. Stronger live transport (custom UDP / WHEP)
-5. Optional Moonlight protocol compatibility
-
-## Relation to Couch Share
-
-[Couch Share](https://github.com/IornMan1213/couch-share) is the lightweight WebRTC-only tool.  
-**CouchForge** is the new project aimed at hardware acceleration and gaming-oriented streaming.
+[Couch Share](https://github.com/IornMan1213/couch-share) — lighter WebRTC-only app (port 3080).
 
 ## License
 
-MIT — use, fork, strip features as you like.
+MIT
