@@ -103,6 +103,15 @@
       </select>
     </div>
     <div class="row">
+      <label>Codec</label>
+      <select id="codecMode">
+        <option value="auto" selected>Auto (prefer AV1)</option>
+        <option value="av1">AV1</option>
+        <option value="hevc">HEVC</option>
+        <option value="h264">H.264</option>
+      </select>
+    </div>
+    <div class="row">
       <label>Control</label>
       <select id="inputMode">
         <option value="touchpad" selected>Touchpad</option>
@@ -114,7 +123,7 @@
       <input type="range" id="sens" min="0.5" max="3" step="0.1" value="1.5" />
       <span id="sensVal" style="color:#86efac;min-width:2.4rem;text-align:right;">1.5x</span>
     </div>
-    <p class="hint">Hardware path uses GPU encode when FFmpeg + NVENC/AMF/QSV are available. iPhone may prefer Compat.</p>
+    <p class="hint">Auto prefers AV1 when your GPU/FFmpeg supports it (NVENC/AMF/QSV). iPhone may prefer Compat (WebRTC).</p>
 
     <div id="status">Ready</div>
     <div id="connStatus">…</div>
