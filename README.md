@@ -7,6 +7,7 @@ Sunshine-inspired foundation — not a drop-in Sunshine replacement yet, but a r
 ## What you get (v0.1)
 
 - **Hardware encode path**: FFmpeg `ddagrab` (DXGI) or `gdigrab` → **AV1** / HEVC / H.264 (NVENC, AMF, QSV) with software fallbacks
+- **Automatic FFmpeg download** on `npm install` (Windows/Linux portable build into `tools/ffmpeg`)
 - **Low-latency presets**: Low latency · Balanced · High quality
 - **Codec preference**: Auto (prefer AV1) · AV1 · HEVC · H.264
 - **Compat path**: WebRTC (works better on iPhone Safari)
@@ -20,8 +21,8 @@ Sunshine-inspired foundation — not a drop-in Sunshine replacement yet, but a r
 
 - Windows 10/11
 - Node.js 18+
-- **FFmpeg** in PATH (build with NVENC/AMF/QSV preferred; AV1 if your GPU supports it)
-  - https://www.gyan.dev/ffmpeg/builds/ or BtbN builds
+- **FFmpeg** — downloaded automatically on `npm install` into `tools/ffmpeg` (or use a system install on PATH)
+  - Builds include NVENC/AMF/QSV when your GPU/drivers support them
 - Optional: `npm install robotjs` for mouse/keyboard injection
 
 ## Quick start
@@ -30,8 +31,15 @@ Sunshine-inspired foundation — not a drop-in Sunshine replacement yet, but a r
 git clone https://github.com/IornMan1213/couchforge.git
 cd couchforge
 npm install
-npm install robotjs   # recommended on Windows
+# postinstall downloads a portable FFmpeg into tools/ffmpeg (Windows/Linux)
+npm install robotjs   # recommended on Windows for mouse/keyboard
 npm start
+```
+
+If FFmpeg did not download (offline install, etc.):
+
+```bash
+npm run ensure-ffmpeg
 ```
 
 Open `http://localhost:3090` on the PC → **Start Host**.
