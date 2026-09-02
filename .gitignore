@@ -1,0 +1,4 @@
+node_modules/
+tools/ffmpeg/
+*.log
+.DS_Store

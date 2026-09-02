@@ -1,9 +1,11 @@
 {
   "name": "couchforge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local hardware-accelerated desktop/game streamer (Sunshine-inspired foundation)",
   "main": "host/index.js",
   "scripts": {
+    "postinstall": "node scripts/ensure-ffmpeg.js",
+    "ensure-ffmpeg": "node scripts/ensure-ffmpeg.js",
     "start": "node host/index.js",
     "host": "node host/index.js"
   },
